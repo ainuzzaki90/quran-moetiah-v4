@@ -84,9 +84,9 @@ export default function PresensiView({ user }: { user: User }) {
       {error && <div className="tf-error">{error}</div>}
       {ok && <div className="tf-empty">{ok}</div>}
 
-      <div className="tf-menu" style={{ flexDirection: 'row', display: 'flex', gap: 8, marginBottom: 14 }}>
-        <button className={tab === 'input' ? 'active' : ''} onClick={() => setTab('input')}>Input Presensi</button>
-        <button className={tab === 'rekap' ? 'active' : ''} onClick={() => setTab('rekap')}>Rekap Kehadiran</button>
+      <div className="tf-tabs">
+        <button className={`tf-tab ${tab === 'input' ? 'active' : ''}`} onClick={() => setTab('input')}>📝 Input Presensi</button>
+        <button className={`tf-tab ${tab === 'rekap' ? 'active' : ''}`} onClick={() => setTab('rekap')}>📊 Rekap Kehadiran</button>
       </div>
 
       {tab === 'input' && (

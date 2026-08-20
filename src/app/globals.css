@@ -153,6 +153,14 @@
   .c-red{background:var(--red);} .c-green2{background:var(--forest);}
   .c-gold{background:var(--gold);}
 
+  .tf-tabs{display:flex;gap:6px;margin-bottom:16px;border-bottom:2px solid var(--border);}
+  .tf-tab{background:transparent;border:none;padding:11px 20px;font-size:14px;font-weight:600;
+    color:var(--text-muted);cursor:pointer;border-radius:8px 8px 0 0;position:relative;top:2px;
+    transition:background var(--transition-fast),color var(--transition-fast);}
+  .tf-tab:hover{background:rgba(2,53,96,.06);color:var(--heading);}
+  .tf-tab.active{background:var(--navy);color:#fff;box-shadow:0 -2px 6px rgba(2,53,96,.18);}
+  html[data-theme="dark"] .tf-tab.active{background:var(--navy-light);}
+
   .tf-panel{background:var(--surface);border-radius:var(--card-radius);margin-bottom:16px;overflow:hidden;
     box-shadow:var(--shadow-sm);transition:box-shadow var(--transition-base);}
   .tf-panel:hover{box-shadow:var(--shadow-md);}
