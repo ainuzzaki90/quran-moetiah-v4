@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { api } from '@/lib/api-client';
+import { ROLE_LABELS } from '@/lib/menu';
 import type { User } from '../AppShell';
 
 export default function DashboardView({ user }: { user: User }) {
@@ -19,7 +20,7 @@ export default function DashboardView({ user }: { user: User }) {
 
   return (
     <div>
-      <h1 className="tf-title">Dashboard</h1>
+      <h1 className="tf-title">Dashboard {ROLE_LABELS[user.role]}</h1>
       {loading && <div className="tf-empty">Memuat...</div>}
       {error && <div className="tf-error">{error}</div>}
       {stats && (
@@ -29,7 +30,7 @@ export default function DashboardView({ user }: { user: User }) {
             <div className="value">{stats.total_setoran}</div>
           </div>
           <div className="tf-stat-card c-cyan">
-            <div className="label">Total Santri</div>
+            <div className="label">Total Siswa</div>
             <div className="value">{stats.total_santri}</div>
           </div>
           <div className="tf-stat-card c-gold">

@@ -68,7 +68,10 @@ export const POST = withErrorHandling(async (req: NextRequest) => {
 
   if (Array.isArray(payload.items)) {
     const rows = payload.items.map((it: any) =>
-      buildSetoranRow(session, payload.tanggal, payload.santri_id, kelasId, { ...it, catatan: payload.catatan || '' })
+      buildSetoranRow(session, payload.tanggal, payload.santri_id, kelasId, {
+        ...it,
+        catatan: it.catatan !== undefined && it.catatan !== '' ? it.catatan : (payload.catatan || ''),
+      })
     );
     const { data, error } = await db.from('setoran').insert(rows).select();
     if (error) throw new Error(error.message);

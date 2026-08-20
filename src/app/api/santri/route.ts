@@ -28,9 +28,16 @@ export const GET = withErrorHandling(async (req: NextRequest) => {
     list = list.filter((s) => binaanIds.includes(String(s.id)));
   }
 
-  // with_posisi=true -> sertakan halaman/surah terakhir tiap siswa
+  // with_posisi=true -> sertakan halaman/surah terakhir tiap siswa + guru pengampu (binaan)
   if (params.get('with_posisi')) {
     const { data: setoranAll } = await db.from('setoran').select('*');
+    const { data: binaanAll } = await db.from('penyimak_santri').select('*');
+    const { data: usersAll } = await db.from('users').select('id, nama');
+    const guruMap: Record<string, string> = {};
+    (binaanAll || []).forEach((b) => {
+      const u = (usersAll || []).find((x) => String(x.id) === String(b.penyimak_id));
+      if (u) guruMap[String(b.santri_id)] = u.nama;
+    });
     list = list.map((s) => {
       const rows = (setoranAll || []).filter((r) => String(r.santri_id) === String(s.id));
       const capaian = computeCapaianTerakhir(rows as any);
@@ -38,6 +45,7 @@ export const GET = withErrorHandling(async (req: NextRequest) => {
         ...s,
         halaman_terakhir: capaian.halaman ? capaian.halaman.label : '-',
         surah_terakhir: capaian.surah ? capaian.surah.label : '-',
+        guru_pengampu: guruMap[String(s.id)] || '-',
       };
     });
   }

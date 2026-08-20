@@ -1,0 +1,27 @@
+// Daftar 114 surah: [nomor, nama, halaman_mushaf_awal, jumlah_ayat]
+// Disalin persis dari script.js versi lama (quran-moetiah repo).
+export const SURAH_PAGES: [number, string, number, number][] = [
+[1,"Al-Fatihah",1,7],[2,"Al-Baqarah",2,286],[3,"Ali 'Imran",50,200],[4,"An-Nisa",77,176],[5,"Al-Ma'idah",106,120],
+[6,"Al-An'am",128,165],[7,"Al-A'raf",151,206],[8,"Al-Anfal",177,75],[9,"At-Tawbah",187,129],[10,"Yunus",208,109],
+[11,"Hud",221,123],[12,"Yusuf",235,111],[13,"Ar-Ra'd",249,43],[14,"Ibrahim",255,52],[15,"Al-Hijr",262,99],
+[16,"An-Nahl",267,128],[17,"Al-Isra",282,111],[18,"Al-Kahf",293,110],[19,"Maryam",305,98],[20,"Ta-Ha",312,135],
+[21,"Al-Anbiya",322,112],[22,"Al-Hajj",332,78],[23,"Al-Mu'minun",342,118],[24,"An-Nur",350,64],[25,"Al-Furqan",359,77],
+[26,"Ash-Shu'ara",367,227],[27,"An-Naml",377,93],[28,"Al-Qasas",385,88],[29,"Al-Ankabut",396,69],[30,"Ar-Rum",404,60],
+[31,"Luqman",411,34],[32,"As-Sajdah",415,30],[33,"Al-Ahzab",418,73],[34,"Saba",428,54],[35,"Fatir",434,45],
+[36,"Ya-Sin",440,83],[37,"As-Saffat",446,182],[38,"Sad",453,88],[39,"Az-Zumar",458,75],[40,"Ghafir",467,85],
+[41,"Fussilat",477,54],[42,"Ash-Shura",483,53],[43,"Az-Zukhruf",489,89],[44,"Ad-Dukhan",496,59],[45,"Al-Jathiyah",499,37],
+[46,"Al-Ahqaf",502,35],[47,"Muhammad",507,38],[48,"Al-Fath",511,29],[49,"Al-Hujurat",515,18],[50,"Qaf",518,45],
+[51,"Adh-Dhariyat",520,60],[52,"At-Tur",523,49],[53,"An-Najm",526,62],[54,"Al-Qamar",528,55],[55,"Ar-Rahman",531,78],
+[56,"Al-Waqi'ah",534,96],[57,"Al-Hadid",537,29],[58,"Al-Mujadila",542,22],[59,"Al-Hashr",545,24],[60,"Al-Mumtahanah",549,13],
+[61,"As-Saff",551,14],[62,"Al-Jumu'ah",553,11],[63,"Al-Munafiqun",554,11],[64,"At-Taghabun",556,18],[65,"At-Talaq",558,12],
+[66,"At-Tahrim",560,12],[67,"Al-Mulk",562,30],[68,"Al-Qalam",564,52],[69,"Al-Haqqah",566,52],[70,"Al-Ma'arij",568,44],
+[71,"Nuh",570,28],[72,"Al-Jinn",572,28],[73,"Al-Muzzammil",574,20],[74,"Al-Muddaththir",575,56],[75,"Al-Qiyamah",577,40],
+[76,"Al-Insan",578,31],[77,"Al-Mursalat",580,50],[78,"An-Naba",582,40],[79,"An-Nazi'at",583,46],[80,"Abasa",585,42],
+[81,"At-Takwir",586,29],[82,"Al-Infitar",587,19],[83,"Al-Mutaffifin",587,36],[84,"Al-Inshiqaq",589,25],[85,"Al-Buruj",590,22],
+[86,"At-Tariq",591,17],[87,"Al-A'la",591,19],[88,"Al-Ghashiyah",592,26],[89,"Al-Fajr",593,30],[90,"Al-Balad",594,20],
+[91,"Ash-Shams",595,15],[92,"Al-Layl",595,21],[93,"Adh-Dhuha",596,11],[94,"Al-Inshirah",596,8],[95,"At-Tin",597,8],
+[96,"Al-'Alaq",597,19],[97,"Al-Qadr",598,5],[98,"Al-Bayyinah",598,8],[99,"Az-Zalzalah",599,8],[100,"Al-'Adiyat",599,11],
+[101,"Al-Qari'ah",600,11],[102,"At-Takathur",600,8],[103,"Al-'Asr",601,3],[104,"Al-Humazah",601,9],[105,"Al-Fil",601,5],
+[106,"Quraysh",602,4],[107,"Al-Ma'un",602,7],[108,"Al-Kawthar",602,3],[109,"Al-Kafirun",603,6],[110,"An-Nasr",603,3],
+[111,"Al-Masad",603,5],[112,"Al-Ikhlas",604,4],[113,"Al-Falaq",604,5],[114,"An-Nas",604,6],
+];

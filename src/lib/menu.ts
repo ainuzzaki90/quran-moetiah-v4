@@ -1,5 +1,14 @@
 export type Role = 'admin' | 'penyimak' | 'santri' | 'tamu';
 
+// Label tampilan untuk role. Nilai role ('santri', dst) tetap dipakai apa
+// adanya di database & backend -- hanya labelnya yang diganti "Siswa" di UI.
+export const ROLE_LABELS: Record<Role, string> = {
+  admin: 'Admin',
+  penyimak: 'Penyimak',
+  santri: 'Siswa',
+  tamu: 'Tamu',
+};
+
 export const MENU: { key: string; label: string; roles: Role[] }[] = [
   { key: 'dashboard', label: 'Dashboard', roles: ['admin', 'penyimak', 'santri', 'tamu'] },
   { key: 'setoran', label: 'Setoran', roles: ['admin', 'penyimak'] },

@@ -10,7 +10,7 @@ export default function Sidebar({
   onSelect: (key: string) => void;
 }) {
   return (
-    <aside className={`tf-sidebar ${open ? 'tf-open' : ''}`} id="tf-sidebar">
+    <aside className={`tf-sidebar ${open ? 'tf-open' : 'tf-collapsed'}`} id="tf-sidebar">
       <div className="tf-sidebar-header">
         <div className="tf-brand">
           <img src="/assets/logo.png" alt="Logo" className="tf-logo-sm" /> Moetiah Quran App

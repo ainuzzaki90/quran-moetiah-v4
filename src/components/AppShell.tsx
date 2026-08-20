@@ -22,7 +22,11 @@ export type User = { id: number; nama: string; role: Role; kelas_id: number | nu
 export default function AppShell() {
   const [user, setUser] = useState<User | null>(null);
   const [view, setView] = useState('dashboard');
-  const [sidebarOpen, setSidebarOpen] = useState(false);
+  // Di layar lebar (desktop/tablet >=768px) sidebar tampil default terbuka;
+  // di layar sempit (HP) default tertutup (mode overlay). Nilai ini juga yang
+  // dipakai untuk tombol hamburger buka/tutup sidebar secara dinamis.
+  const [sidebarOpen, setSidebarOpen] = useState(true);
+  const [isDesktop, setIsDesktop] = useState(true);
   const [checking, setChecking] = useState(true);
 
   useEffect(() => {
@@ -30,6 +34,15 @@ export default function AppShell() {
     const token = getToken();
     if (stored && token) setUser(stored);
     setChecking(false);
+
+    const mq = window.matchMedia('(min-width: 768px)');
+    const applyMatch = () => {
+      setIsDesktop(mq.matches);
+      setSidebarOpen(mq.matches); // desktop: terbuka default, mobile: tertutup default
+    };
+    applyMatch();
+    mq.addEventListener('change', applyMatch);
+    return () => mq.removeEventListener('change', applyMatch);
   }, []);
 
   const handleLogin = useCallback((token: string, u: User) => {
@@ -66,7 +79,7 @@ export default function AppShell() {
         onClose={() => setSidebarOpen(false)}
         menu={allowedMenu}
         activeView={view}
-        onSelect={(k) => { setView(k); setSidebarOpen(false); }}
+        onSelect={(k) => { setView(k); if (!isDesktop) setSidebarOpen(false); }}
       />
       <div className="tf-right-col">
         <Topbar user={user} onToggleSidebar={() => setSidebarOpen((v) => !v)} onLogout={handleLogout} />

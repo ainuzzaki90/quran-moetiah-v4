@@ -20,6 +20,12 @@ export type SetoranRow = {
   [key: string]: any;
 };
 
+// ============== LEVEL JILID UMMI ==============
+// Disalin persis dari script.js versi lama.
+export const LEVEL_JILID_UMMI = ['Jilid 1', 'Jilid 2', 'Jilid 3', 'Jilid 4', 'Jilid 5', 'Jilid 6'];
+export const LEVEL_UMMI_OPTIONS = [...LEVEL_JILID_UMMI, 'Gharib/Tajwid', "Al-Qur'an"];
+export const MAX_HALAMAN_UMMI = 50; // Maksimal halaman buku Jilid Ummi 1-6
+
 // ============== PREDIKAT (skala umum tahfiz/Ummi) ==============
 export function calcPredikat(nilai: number | null | undefined): string {
   const n = Number(nilai);
@@ -28,7 +34,7 @@ export function calcPredikat(nilai: number | null | undefined): string {
   if (n >= 85) return 'Jayyid Jiddan';
   if (n >= 75) return 'Jayyid';
   if (n >= 60) return 'Maqbul';
-  return 'Rasib';
+  return 'Dhoif';
 }
 
 // ============== RUBRIK PENILAIAN METODE UMMI ==============

@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import type { User } from './AppShell';
+import { ROLE_LABELS } from '@/lib/menu';
 
 export default function Topbar({
   user, onToggleSidebar, onLogout,
@@ -36,7 +37,7 @@ export default function Topbar({
     <div className="tf-topbar">
       <button className="tf-hamburger" onClick={onToggleSidebar} aria-label="Buka menu">☰</button>
       <div className="tf-user">
-        <span>{user.nama} ({user.role})</span>
+        <span>{user.nama} ({ROLE_LABELS[user.role]})</span>
         <button onClick={toggleTheme} aria-label="Ganti tema gelap/terang" title="Ganti tema">
           {dark ? '☀️' : '🌙'}
         </button>
