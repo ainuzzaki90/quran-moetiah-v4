@@ -10,27 +10,67 @@ import type { User } from '../AppShell';
 
 const BULAN_NAMA = ['', 'Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni', 'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember'];
 
+type Mode = 'bulanan' | 'semester' | 'kustom';
+
 export default function RekapView({ user }: { user: User }) {
   const now = new Date();
+  // Tahun ajaran berjalan (Juli-Juni): kalau sekarang bulan 1-6, tahun ajaran dimulai tahun lalu.
+  const tahunAjaranSekarang = now.getMonth() + 1 >= 7 ? now.getFullYear() : now.getFullYear() - 1;
+
+  const [mode, setMode] = useState<Mode>('bulanan');
   const [tahun, setTahun] = useState(now.getFullYear());
   const [bulan, setBulan] = useState(now.getMonth() + 1);
+  const [tahunAjaranAwal, setTahunAjaranAwal] = useState(tahunAjaranSekarang);
+  const [semester, setSemester] = useState<1 | 2>(now.getMonth() + 1 >= 7 ? 1 : 2);
+  const [kustomTahun, setKustomTahun] = useState(now.getFullYear());
+  const [kustomMulai, setKustomMulai] = useState(1);
+  const [kustomAkhir, setKustomAkhir] = useState(6);
+
   const [data, setData] = useState<any>(null);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(true);
   const [expanded, setExpanded] = useState<number | null>(null);
-  const [pdfBusy, setPdfBusy] = useState<string | null>(null); // pesan progres saat generate PDF
+  const [pdfBusy, setPdfBusy] = useState<string | null>(null);
+
+  // Query params efektif berdasarkan mode yang dipilih.
+  function queryParams() {
+    if (mode === 'semester') {
+      if (semester === 1) return { tahun: tahunAjaranAwal, bulan_mulai: 7, bulan_akhir: 12 };
+      return { tahun: tahunAjaranAwal + 1, bulan_mulai: 1, bulan_akhir: 6 };
+    }
+    if (mode === 'kustom') return { tahun: kustomTahun, bulan_mulai: kustomMulai, bulan_akhir: kustomAkhir };
+    return { tahun, bulan };
+  }
+
+  function periodeLabelDisplay() {
+    if (mode === 'semester') {
+      return semester === 1
+        ? `Semester Ganjil ${tahunAjaranAwal}/${tahunAjaranAwal + 1} (Juli–Desember ${tahunAjaranAwal})`
+        : `Semester Genap ${tahunAjaranAwal}/${tahunAjaranAwal + 1} (Januari–Juni ${tahunAjaranAwal + 1})`;
+    }
+    if (mode === 'kustom') return `${BULAN_NAMA[kustomMulai]}–${BULAN_NAMA[kustomAkhir]} ${kustomTahun}`;
+    return `${BULAN_NAMA[bulan]} ${tahun}`;
+  }
+
+  function filenameSuffix() {
+    if (mode === 'semester') return `Semester-${semester === 1 ? 'Ganjil' : 'Genap'}-${tahunAjaranAwal}-${tahunAjaranAwal + 1}`;
+    if (mode === 'kustom') return `${BULAN_NAMA[kustomMulai]}-${BULAN_NAMA[kustomAkhir]}-${kustomTahun}`;
+    return `${BULAN_NAMA[bulan]}-${tahun}`;
+  }
 
   function load() {
     setLoading(true); setError('');
-    api.get(`/rekap?tahun=${tahun}&bulan=${bulan}`)
+    const p = queryParams();
+    const qs = new URLSearchParams(Object.fromEntries(Object.entries(p).map(([k, v]) => [k, String(v)])));
+    api.get(`/rekap?${qs.toString()}`)
       .then((res) => setData(res))
       .catch((e) => setError(e.message))
       .finally(() => setLoading(false));
   }
-  useEffect(load, [tahun, bulan]);
+  useEffect(load, [mode, tahun, bulan, tahunAjaranAwal, semester, kustomTahun, kustomMulai, kustomAkhir]);
 
   function periodeMeta() {
-    const periodeLabel = `${BULAN_NAMA[bulan]} ${tahun}`;
+    const periodeLabel = periodeLabelDisplay();
     return { periodeLabel, periodeRangLabel: periodeLabel, tahunAjaranLabel: `Tahun Ajaran ${data.tahun_ajaran} (Semester ${data.semester})` };
   }
 
@@ -58,7 +98,7 @@ export default function RekapView({ user }: { user: User }) {
     const wb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(ringkasan), 'Ringkasan');
     XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(detail), 'Detail Setoran');
-    XLSX.writeFile(wb, `Laporan-${BULAN_NAMA[bulan]}-${tahun}.xlsx`);
+    XLSX.writeFile(wb, `Laporan-${filenameSuffix()}.xlsx`);
     showToast('Excel berhasil diunduh');
   }
 
@@ -76,7 +116,7 @@ export default function RekapView({ user }: { user: User }) {
     setPdfBusy(`Menyiapkan PDF ${d.nama}...`);
     try {
       const html = buildRaporHtml(d, periodeMeta());
-      await downloadPdfSingle(html, `Rapor-${d.nama}-${BULAN_NAMA[bulan]}-${tahun}.pdf`);
+      await downloadPdfSingle(html, `Rapor-${d.nama}-${filenameSuffix()}.pdf`);
       showToast('PDF berhasil diunduh');
     } catch (e: any) {
       setError('Gagal membuat PDF: ' + e.message);
@@ -90,7 +130,7 @@ export default function RekapView({ user }: { user: User }) {
     const meta = periodeMeta();
     const htmls = data.data.map((d: any) => buildRaporHtml(d, meta));
     try {
-      await downloadPdfBundle(htmls, `Rapor-Sekelas-${BULAN_NAMA[bulan]}-${tahun}.pdf`, (i, total) => {
+      await downloadPdfBundle(htmls, `Rapor-Sekelas-${filenameSuffix()}.pdf`, (i, total) => {
         setPdfBusy(`Menyiapkan PDF ${i} dari ${total} siswa...`);
       });
       showToast(`${htmls.length} rapor berhasil digabung jadi 1 PDF`);
@@ -103,29 +143,83 @@ export default function RekapView({ user }: { user: User }) {
 
   return (
     <div>
-      <h1 className="tf-title">Rekap & Rapor Bulanan</h1>
+      <h1 className="tf-title">Rekap & Rapor</h1>
       {error && <div className="tf-error">{error}</div>}
       {pdfBusy && <div className="tf-empty">⏳ {pdfBusy}</div>}
 
       <div className="tf-panel">
         <div className="tf-panel-body">
-          <div className="tf-field">
-            <label>Bulan</label>
-            <select value={bulan} onChange={(e) => setBulan(Number(e.target.value))}>
-              {BULAN_NAMA.slice(1).map((b, i) => <option key={i + 1} value={i + 1}>{b}</option>)}
-            </select>
+          <div className="tf-tabs" style={{ marginBottom: 14 }}>
+            <button className={`tf-tab ${mode === 'bulanan' ? 'active' : ''}`} onClick={() => setMode('bulanan')}>📅 Bulanan</button>
+            <button className={`tf-tab ${mode === 'semester' ? 'active' : ''}`} onClick={() => setMode('semester')}>🎓 Semester</button>
+            <button className={`tf-tab ${mode === 'kustom' ? 'active' : ''}`} onClick={() => setMode('kustom')}>🔧 Rentang Kustom</button>
           </div>
-          <div className="tf-field">
-            <label>Tahun</label>
-            <input type="number" value={tahun} onChange={(e) => setTahun(Number(e.target.value))} />
-          </div>
+
+          {mode === 'bulanan' && (
+            <>
+              <div className="tf-field">
+                <label>Bulan</label>
+                <select value={bulan} onChange={(e) => setBulan(Number(e.target.value))}>
+                  {BULAN_NAMA.slice(1).map((b, i) => <option key={i + 1} value={i + 1}>{b}</option>)}
+                </select>
+              </div>
+              <div className="tf-field">
+                <label>Tahun</label>
+                <input type="number" value={tahun} onChange={(e) => setTahun(Number(e.target.value))} />
+              </div>
+            </>
+          )}
+
+          {mode === 'semester' && (
+            <>
+              <div className="tf-field">
+                <label>Tahun Ajaran</label>
+                <select value={tahunAjaranAwal} onChange={(e) => setTahunAjaranAwal(Number(e.target.value))}>
+                  {Array.from({ length: 6 }, (_, i) => tahunAjaranSekarang - 3 + i).map((ta) => (
+                    <option key={ta} value={ta}>{ta}/{ta + 1}</option>
+                  ))}
+                </select>
+              </div>
+              <div className="tf-field">
+                <label>Semester</label>
+                <select value={semester} onChange={(e) => setSemester(Number(e.target.value) as 1 | 2)}>
+                  <option value={1}>Ganjil (Juli–Desember)</option>
+                  <option value={2}>Genap (Januari–Juni)</option>
+                </select>
+              </div>
+            </>
+          )}
+
+          {mode === 'kustom' && (
+            <>
+              <div className="tf-field">
+                <label>Tahun</label>
+                <input type="number" value={kustomTahun} onChange={(e) => setKustomTahun(Number(e.target.value))} />
+              </div>
+              <div className="tf-field">
+                <label>Dari Bulan</label>
+                <select value={kustomMulai} onChange={(e) => setKustomMulai(Number(e.target.value))}>
+                  {BULAN_NAMA.slice(1).map((b, i) => <option key={i + 1} value={i + 1}>{b}</option>)}
+                </select>
+              </div>
+              <div className="tf-field">
+                <label>Sampai Bulan</label>
+                <select value={kustomAkhir} onChange={(e) => setKustomAkhir(Number(e.target.value))}>
+                  {BULAN_NAMA.slice(1).map((b, i) => <option key={i + 1} value={i + 1}>{b}</option>)}
+                </select>
+              </div>
+              <div className="tf-empty" style={{ width: '100%' }}>
+                Catatan: rentang kustom hanya untuk bulan-bulan dalam tahun kalender yang sama (belum mendukung lintas tahun, mis. Nov–Feb).
+              </div>
+            </>
+          )}
         </div>
       </div>
 
       {loading ? <div className="tf-empty">Memuat...</div> : data && (
         <div className="tf-panel">
           <div className="tf-panel-head" style={{ display: 'flex', gap: 8, flexWrap: 'wrap', justifyContent: 'space-between', alignItems: 'center' }}>
-            <span>Rapor {BULAN_NAMA[bulan]} {tahun} — Tahun Ajaran {data.tahun_ajaran} (Semester {data.semester})</span>
+            <span>Rapor {periodeLabelDisplay()} — Tahun Ajaran {data.tahun_ajaran} (Semester {data.semester})</span>
             <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
               <button className="tf-btn-sm" onClick={exportRekapExcel} disabled={!!pdfBusy}>⬇ Export Excel</button>
               <button className="tf-btn-sm" onClick={unduhPdfSekelas} disabled={!!pdfBusy || data.data.length === 0}>📄 Unduh PDF Sekelas (gabung)</button>
