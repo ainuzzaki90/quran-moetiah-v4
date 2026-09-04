@@ -4,6 +4,7 @@ import { getSupabaseAdmin } from '@/lib/supabase';
 import { getToken, jsonOk, withErrorHandling } from '@/lib/api-helpers';
 import { getSantriIdsForPenyimak, getKelasIdSantri } from '@/lib/relations';
 import { calcPredikat } from '@/lib/helpers';
+import { enrichSetoranRows } from '@/lib/enrich';
 
 // GET /api/setoran?santri_id=
 export const GET = withErrorHandling(async (req: NextRequest) => {
@@ -27,7 +28,7 @@ export const GET = withErrorHandling(async (req: NextRequest) => {
     list = list.filter((s) => binaanIds.includes(String(s.santri_id)));
   }
 
-  return jsonOk({ data: list });
+  return jsonOk({ data: await enrichSetoranRows(list) });
 });
 
 function buildSetoranRow(session: SessionUser, tanggal: string, santriId: number, kelasId: number | null, item: any) {

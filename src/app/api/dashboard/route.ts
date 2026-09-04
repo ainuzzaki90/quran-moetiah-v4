@@ -3,6 +3,7 @@ import { requireAuth } from '@/lib/auth';
 import { getSupabaseAdmin } from '@/lib/supabase';
 import { getToken, jsonOk, withErrorHandling } from '@/lib/api-helpers';
 import { getSantriIdsForPenyimak } from '@/lib/relations';
+import { enrichSetoranRows } from '@/lib/enrich';
 
 export const GET = withErrorHandling(async (req: NextRequest) => {
   const session = await requireAuth(getToken(req));
@@ -33,6 +34,7 @@ export const GET = withErrorHandling(async (req: NextRequest) => {
   }).length;
 
   const terbaru = [...setoran].sort((a, b) => new Date(b.tanggal).getTime() - new Date(a.tanggal).getTime()).slice(0, 10);
+  const terbaruEnriched = await enrichSetoranRows(terbaru);
 
   return jsonOk({
     stats: {
@@ -41,6 +43,6 @@ export const GET = withErrorHandling(async (req: NextRequest) => {
       rata_nilai: Math.round(rataNilai * 100) / 100,
       setoran_bulan_ini: bulanIni,
     },
-    setoran_terbaru: terbaru,
+    setoran_terbaru: terbaruEnriched,
   });
 });

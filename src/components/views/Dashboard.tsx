@@ -51,7 +51,7 @@ export default function DashboardView({ user }: { user: User }) {
           ) : (
             <table className="tf-table">
               <thead>
-                <tr><th>Tanggal</th><th>Jenis</th><th>Surah/Halaman</th><th>Nilai</th><th>Predikat</th></tr>
+                <tr><th>Tanggal</th><th>Nama Siswa</th><th>Kelas</th><th>Guru Pengampu</th><th>Jenis</th><th>Surah/Halaman</th><th>Nilai</th><th>Predikat</th></tr>
               </thead>
               <tbody>
                 {terbuah(terbaru)}
@@ -68,6 +68,9 @@ function terbuah(rows: any[]) {
   return rows.map((r) => (
     <tr key={r.id}>
       <td>{String(r.tanggal).substring(0, 10)}</td>
+      <td>{r.nama_siswa || '-'}</td>
+      <td>{r.kelas_nama || '-'}</td>
+      <td>{r.guru_pengampu || '-'}</td>
       <td>{r.jenis}</td>
       <td>{r.jenis === 'Setoran Metode Ummi' ? `Hal. ${r.halaman_selesai || r.halaman_mulai || '-'}` : (r.surah_selesai || r.surah || '-')}</td>
       <td>{r.nilai ?? '-'}</td>

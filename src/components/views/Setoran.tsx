@@ -358,12 +358,15 @@ export default function SetoranView({ user }: { user: User }) {
             <div className="tf-empty">Belum ada setoran tercatat.</div>
           ) : (
             <table className="tf-table">
-              <thead><tr><th>#</th><th>Tanggal</th><th>Jenis</th><th>Surah/Halaman</th><th>Nilai</th><th>Predikat</th><th>Aksi</th></tr></thead>
+              <thead><tr><th>#</th><th>Tanggal</th><th>Nama Siswa</th><th>Kelas</th><th>Guru Pengampu</th><th>Jenis</th><th>Surah/Halaman</th><th>Nilai</th><th>Predikat</th><th>Aksi</th></tr></thead>
               <tbody>
                 {riwayat.map((r, i) => (
                   <tr key={r.id}>
                     <td style={{ textAlign: 'center', color: '#9ca3af', fontSize: 12 }}>{i + 1}</td>
                     <td>{String(r.tanggal).substring(0, 10)}</td>
+                    <td>{r.nama_siswa || '-'}</td>
+                    <td>{r.kelas_nama || '-'}</td>
+                    <td>{r.guru_pengampu || '-'}</td>
                     <td><span className={`tf-badge ${r.jenis === 'Murojaah' ? 'b-murajaah' : r.jenis === 'Tilawah' ? 'b-tilawah' : r.jenis === 'Setoran Metode Ummi' ? 'b-ummi' : 'b-hafalan'}`}>{r.jenis}</span></td>
                     <td>{r.jenis === 'Setoran Metode Ummi' ? `Hal. ${r.halaman_mulai}-${r.halaman_selesai}` : `${r.surah} : ${r.ayat_mulai}-${r.ayat_selesai}`}</td>
                     <td>{r.nilai ?? '-'}</td>
