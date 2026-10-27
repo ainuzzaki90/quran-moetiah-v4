@@ -15,6 +15,7 @@ export const MENU: { key: string; label: string; roles: Role[] }[] = [
   { key: 'presensi', label: 'Presensi', roles: ['admin', 'penyimak'] },
   { key: 'santri', label: 'Data Siswa', roles: ['admin', 'penyimak', 'tamu'] },
   { key: 'kelas', label: 'Data Kelas', roles: ['admin'] },
+  { key: 'halaqah', label: 'Data Halaqah', roles: ['admin'] },
   { key: 'statistik', label: 'Statistik', roles: ['admin', 'penyimak', 'santri', 'tamu'] },
   { key: 'progress', label: 'Progress Siswa', roles: ['admin', 'penyimak', 'santri', 'tamu'] },
   { key: 'rekap', label: 'Rekap & Rapor', roles: ['admin', 'penyimak', 'tamu'] },

@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import { useHalaqah, halaqahLabel } from '../HalaqahSelect';
 import { api } from '@/lib/api-client';
 import type { User } from '../AppShell';
 
@@ -14,6 +15,8 @@ const BADGE_CLS: Record<string, string> = {
 export default function ProgressView({ user }: { user: User }) {
   const isSantri = user.role === 'santri';
   const [santriList, setSantriList] = useState<any[]>([]);
+  const { list: halaqahList } = useHalaqah();
+  const [halaqahId, setHalaqahId] = useState('semua');
   const [santriId, setSantriId] = useState('');
   const [tanggalMulai, setTanggalMulai] = useState(mulaiDefaultStr());
   const [tanggalAkhir, setTanggalAkhir] = useState(todayStr());
@@ -31,7 +34,7 @@ export default function ProgressView({ user }: { user: User }) {
   function loadProgress(id: string) {
     if (!isSantri && !id) { setError('Pilih siswa terlebih dahulu.'); return; }
     setLoading(true); setError('');
-    const params = new URLSearchParams({ tanggal_mulai: tanggalMulai, tanggal_akhir: tanggalAkhir });
+    const params = new URLSearchParams({ tanggal_mulai: tanggalMulai, tanggal_akhir: tanggalAkhir, halaqah_id: halaqahId });
     if (!isSantri) params.set('santri_id', id);
     api.get(`/progress?${params.toString()}`)
       .then((res) => setData(res))
@@ -68,6 +71,10 @@ export default function ProgressView({ user }: { user: User }) {
             )}
             <input type="date" value={tanggalMulai} onChange={(e) => setTanggalMulai(e.target.value)} />
             <input type="date" value={tanggalAkhir} onChange={(e) => setTanggalAkhir(e.target.value)} />
+            <select value={halaqahId} onChange={(e) => setHalaqahId(e.target.value)}>
+              <option value="semua">Semua Halaqah</option>
+              {halaqahList.map((h) => <option key={h.id} value={h.id}>{halaqahLabel(h)}</option>)}
+            </select>
             <button className="tf-btn-sm" onClick={() => loadProgress(santriId)}>Tampilkan</button>
           </div>
 

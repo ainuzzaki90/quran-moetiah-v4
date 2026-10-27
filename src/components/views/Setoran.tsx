@@ -6,6 +6,7 @@ import { UMMI_RUBRIK, LEVEL_JILID_UMMI, MAX_HALAMAN_UMMI, calcPredikat } from '@
 import { SURAH_PAGES } from '@/lib/surah-pages';
 import { showToast } from '@/lib/toast';
 import Modal from '../Modal';
+import HalaqahSelect, { useHalaqah } from '../HalaqahSelect';
 import type { User } from '../AppShell';
 
 const JENIS_OPTIONS = ['Hafalan Baru', 'Murojaah', 'Tilawah'] as const;
@@ -38,6 +39,10 @@ export default function SetoranView({ user }: { user: User }) {
   const [ok, setOk] = useState('');
   const [loading, setLoading] = useState(true);
 
+  const { list: halaqahList } = useHalaqah();
+  const [halaqahId, setHalaqahId] = useState('');
+  const [filterHalaqah, setFilterHalaqah] = useState('semua');
+
   const [tanggal, setTanggal] = useState(nowDateTimeStr());
   const [santriId, setSantriId] = useState('');
   const [catatan, setCatatan] = useState('');
@@ -56,15 +61,16 @@ export default function SetoranView({ user }: { user: User }) {
 
   function load() {
     setLoading(true);
+    if (!halaqahId) return;
     Promise.all([
-      api.get('/santri?binaan_only=1&with_posisi=1'),
-      api.get('/setoran'),
+      api.get(`/santri?binaan_only=1&with_posisi=1&halaqah_id=${halaqahId}`),
+      api.get(`/setoran?halaqah_id=${filterHalaqah}`),
     ])
       .then(([s, r]) => { setSantriList(s.data); setRiwayat(r.data.slice(0, 20)); })
       .catch((e) => setError(e.message))
       .finally(() => setLoading(false));
   }
-  useEffect(load, []);
+  useEffect(load, [halaqahId, filterHalaqah]);
 
   const siswaTerpilih = santriList.find((s) => String(s.id) === String(santriId));
   const level = siswaTerpilih?.level_ummi || '';
@@ -155,7 +161,7 @@ export default function SetoranView({ user }: { user: User }) {
     }
 
     try {
-      await api.post('/setoran', { tanggal: tanggal.slice(0, 10), santri_id: Number(santriId), items, catatan });
+      await api.post('/setoran', { tanggal: tanggal.slice(0, 10), santri_id: Number(santriId), halaqah_id: Number(halaqahId), items, catatan });
       showToast('Setoran berhasil disimpan');
       resetForm();
       load();
@@ -192,6 +198,7 @@ export default function SetoranView({ user }: { user: User }) {
       <div className="tf-panel">
         <div className="tf-panel-head">Tambah Setoran</div>
         <div className="tf-panel-body">
+          <HalaqahSelect list={halaqahList} value={halaqahId} onChange={(v) => { setHalaqahId(v); setSantriId(''); }} label="Halaqah / Sesi" />
           <div className="tf-field">
             <label>Nama Siswa</label>
             <select value={santriId} onChange={(e) => pilihSiswa(e.target.value)}>
@@ -354,11 +361,14 @@ export default function SetoranView({ user }: { user: User }) {
       <div className="tf-panel">
         <div className="tf-panel-head">Daftar Setoran</div>
         <div className="tf-panel-body tf-table-wrap">
+          <div style={{ maxWidth: 320 }}>
+            <HalaqahSelect list={halaqahList} value={filterHalaqah} onChange={setFilterHalaqah} allowAll label="Tampilkan halaqah" />
+          </div>
           {loading ? <div className="tf-empty">Memuat...</div> : riwayat.length === 0 ? (
             <div className="tf-empty">Belum ada setoran tercatat.</div>
           ) : (
             <table className="tf-table">
-              <thead><tr><th>#</th><th>Tanggal</th><th>Nama Siswa</th><th>Kelas</th><th>Guru Pengampu</th><th>Jenis</th><th>Surah/Halaman</th><th>Nilai</th><th>Predikat</th><th>Aksi</th></tr></thead>
+              <thead><tr><th>#</th><th>Tanggal</th><th>Nama Siswa</th><th>Kelas</th><th>Halaqah</th><th>Guru Pengampu</th><th>Jenis</th><th>Surah/Halaman</th><th>Nilai</th><th>Predikat</th><th>Aksi</th></tr></thead>
               <tbody>
                 {riwayat.map((r, i) => (
                   <tr key={r.id}>
@@ -366,6 +376,7 @@ export default function SetoranView({ user }: { user: User }) {
                     <td>{String(r.tanggal).substring(0, 10)}</td>
                     <td>{r.nama_siswa || '-'}</td>
                     <td>{r.kelas_nama || '-'}</td>
+                    <td>{r.halaqah_nama || '-'}</td>
                     <td>{r.guru_pengampu || '-'}</td>
                     <td><span className={`tf-badge ${r.jenis === 'Murojaah' ? 'b-murajaah' : r.jenis === 'Tilawah' ? 'b-tilawah' : r.jenis === 'Setoran Metode Ummi' ? 'b-ummi' : 'b-hafalan'}`}>{r.jenis}</span></td>
                     <td>{r.jenis === 'Setoran Metode Ummi' ? `Hal. ${r.halaman_mulai}-${r.halaman_selesai}` : `${r.surah} : ${r.ayat_mulai}-${r.ayat_selesai}`}</td>

@@ -4,6 +4,7 @@ import { getSupabaseAdmin } from '@/lib/supabase';
 import { getToken, jsonOk, withErrorHandling } from '@/lib/api-helpers';
 import { getSantriIdsForPenyimak, getKelasIdSantri } from '@/lib/relations';
 import { calcPredikat } from '@/lib/helpers';
+import { parseHalaqahParam, getDefaultHalaqahId } from '@/lib/halaqah';
 import { enrichSetoranRows } from '@/lib/enrich';
 
 // GET /api/setoran?santri_id=
@@ -18,6 +19,8 @@ export const GET = withErrorHandling(async (req: NextRequest) => {
   }
   const santriIdParam = req.nextUrl.searchParams.get('santri_id');
   if (santriIdParam) query = query.eq('santri_id', santriIdParam);
+  const hq = parseHalaqahParam(req.nextUrl.searchParams.get('halaqah_id'));
+  if (hq) query = query.eq('halaqah_id', hq);
 
   let { data, error } = await query;
   if (error) throw new Error(error.message);
@@ -31,13 +34,14 @@ export const GET = withErrorHandling(async (req: NextRequest) => {
   return jsonOk({ data: await enrichSetoranRows(list) });
 });
 
-function buildSetoranRow(session: SessionUser, tanggal: string, santriId: number, kelasId: number | null, item: any) {
+function buildSetoranRow(session: SessionUser, tanggal: string, santriId: number, kelasId: number | null, halaqahId: any, item: any) {
   const predikat = item.predikat && item.predikat !== '' ? item.predikat : calcPredikat(item.nilai);
   return {
     tanggal,
     santri_id: santriId,
     kelas_id: kelasId,
     penyimak_id: session.user_id,
+    halaqah_id: halaqahId,
     jenis: item.jenis,
     surah: item.surah || null,
     ayat_mulai: item.ayat_mulai || null,
@@ -66,10 +70,12 @@ export const POST = withErrorHandling(async (req: NextRequest) => {
 
   const db = getSupabaseAdmin();
   const kelasId = payload.kelas_id || (await getKelasIdSantri(payload.santri_id));
+  const halaqahId = payload.halaqah_id || (await getDefaultHalaqahId());
+  if (!halaqahId) throw new Error('Halaqah belum dipilih');
 
   if (Array.isArray(payload.items)) {
     const rows = payload.items.map((it: any) =>
-      buildSetoranRow(session, payload.tanggal, payload.santri_id, kelasId, {
+      buildSetoranRow(session, payload.tanggal, payload.santri_id, kelasId, halaqahId, {
         ...it,
         catatan: it.catatan !== undefined && it.catatan !== '' ? it.catatan : (payload.catatan || ''),
       })
@@ -79,7 +85,7 @@ export const POST = withErrorHandling(async (req: NextRequest) => {
     return jsonOk({ count: data.length });
   }
 
-  const row = buildSetoranRow(session, payload.tanggal, payload.santri_id, kelasId, payload);
+  const row = buildSetoranRow(session, payload.tanggal, payload.santri_id, kelasId, halaqahId, payload);
   const { data, error } = await db.from('setoran').insert(row).select().single();
   if (error) throw new Error(error.message);
   return jsonOk({ data });

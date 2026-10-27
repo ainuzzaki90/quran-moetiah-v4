@@ -1,6 +1,7 @@
 import { NextRequest } from 'next/server';
 import { requireAuth } from '@/lib/auth';
 import { getSupabaseAdmin } from '@/lib/supabase';
+import { parseHalaqahParam } from '@/lib/halaqah';
 import { getToken, jsonOk, withErrorHandling } from '@/lib/api-helpers';
 
 // GET /api/presensi/rekap?penyimak_id=&kelas_id=&tanggal_mulai=&tanggal_akhir=&show_all=1
@@ -12,6 +13,8 @@ export const GET = withErrorHandling(async (req: NextRequest) => {
   let query = db.from('presensi').select('*');
   if (session.role === 'penyimak') query = query.eq('penyimak_id', session.user_id);
   if (params.get('penyimak_id')) query = query.eq('penyimak_id', params.get('penyimak_id'));
+  const hq = parseHalaqahParam(params.get('halaqah_id'));
+  if (hq) query = query.eq('halaqah_id', hq);
   if (params.get('kelas_id')) query = query.eq('kelas_id', params.get('kelas_id'));
   if (params.get('tanggal_mulai')) query = query.gte('tanggal', params.get('tanggal_mulai')!);
   if (params.get('tanggal_akhir')) query = query.lte('tanggal', params.get('tanggal_akhir')!);

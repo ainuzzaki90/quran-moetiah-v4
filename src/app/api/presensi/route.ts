@@ -1,6 +1,7 @@
 import { NextRequest } from 'next/server';
 import { requireAuth } from '@/lib/auth';
 import { getSupabaseAdmin } from '@/lib/supabase';
+import { parseHalaqahParam, getDefaultHalaqahId } from '@/lib/halaqah';
 import { getToken, jsonOk, withErrorHandling } from '@/lib/api-helpers';
 
 // GET /api/presensi?santri_id=&tanggal_mulai=&tanggal_akhir=&penyimak_id=(admin only)
@@ -13,6 +14,8 @@ export const GET = withErrorHandling(async (req: NextRequest) => {
 
   if (session.role === 'penyimak') query = query.eq('penyimak_id', session.user_id);
   if (session.role === 'admin' && params.get('penyimak_id')) query = query.eq('penyimak_id', params.get('penyimak_id'));
+  const hq = parseHalaqahParam(params.get('halaqah_id'));
+  if (hq) query = query.eq('halaqah_id', hq);
   if (params.get('santri_id')) query = query.eq('santri_id', params.get('santri_id'));
   if (params.get('tanggal_mulai')) query = query.gte('tanggal', params.get('tanggal_mulai')!);
   if (params.get('tanggal_akhir')) query = query.lte('tanggal', params.get('tanggal_akhir')!);
@@ -23,7 +26,7 @@ export const GET = withErrorHandling(async (req: NextRequest) => {
 });
 
 // POST /api/presensi  { tanggal, materi?, catatan?, penyimak_id?(admin only), rows: [{santri_id, kelas_id, status}] }
-// Replace: menghapus data presensi lama pada tanggal+penyimak yang sama, lalu insert baru.
+// Replace: menghapus data presensi lama pada tanggal+halaqah+penyimak yang sama, lalu insert baru.
 export const POST = withErrorHandling(async (req: NextRequest) => {
   const session = await requireAuth(getToken(req));
   if (session.role !== 'admin' && session.role !== 'penyimak') throw new Error('Tidak diizinkan');
@@ -33,13 +36,18 @@ export const POST = withErrorHandling(async (req: NextRequest) => {
 
   const effectivePenyimakId = session.role === 'admin' && payload.penyimak_id ? payload.penyimak_id : session.user_id;
 
+  const halaqahId = payload.halaqah_id || (await getDefaultHalaqahId());
+  if (!halaqahId) throw new Error('Halaqah belum dipilih');
+
   const db = getSupabaseAdmin();
-  await db.from('presensi').delete().eq('tanggal', payload.tanggal).eq('penyimak_id', effectivePenyimakId);
+  // Replace hanya untuk tanggal + halaqah + penyimak yang sama -> sesi lain tidak tertimpa
+  await db.from('presensi').delete().eq('tanggal', payload.tanggal).eq('halaqah_id', halaqahId).eq('penyimak_id', effectivePenyimakId);
 
   const rows = payload.rows.map((item: any) => ({
     tanggal: payload.tanggal,
     kelas_id: item.kelas_id || null,
     penyimak_id: effectivePenyimakId,
+    halaqah_id: halaqahId,
     santri_id: item.santri_id,
     status: item.status || 'Hadir',
     materi: payload.materi || null,
@@ -57,8 +65,9 @@ export const DELETE = withErrorHandling(async (req: NextRequest) => {
   if (!payload.tanggal) throw new Error('tanggal wajib diisi');
   const effectivePenyimakId = session.role === 'admin' && payload.penyimak_id ? payload.penyimak_id : session.user_id;
 
+  const halaqahId = payload.halaqah_id || (await getDefaultHalaqahId());
   const db = getSupabaseAdmin();
-  const { error } = await db.from('presensi').delete().eq('tanggal', payload.tanggal).eq('penyimak_id', effectivePenyimakId);
+  const { error } = await db.from('presensi').delete().eq('tanggal', payload.tanggal).eq('halaqah_id', halaqahId).eq('penyimak_id', effectivePenyimakId);
   if (error) throw new Error(error.message);
   return jsonOk();
 });

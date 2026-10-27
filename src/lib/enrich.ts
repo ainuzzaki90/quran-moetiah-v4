@@ -1,4 +1,5 @@
 import { getSupabaseAdmin } from './supabase';
+import { getHalaqahMap } from './halaqah';
 
 /**
  * Menambahkan nama_siswa, kelas_nama, dan guru_pengampu ke tiap baris setoran.
@@ -28,9 +29,13 @@ export async function enrichSetoranRows(rows: any[]): Promise<any[]> {
   // Fallback: penyimak binaan tetap (kalau baris setoran tidak punya penyimak_id)
   const { data: binaanAll } = await db.from('penyimak_santri').select('*');
   const binaanMap: Record<string, string> = {};
+  const { data: allUsers } = await db.from('users').select('id, nama');
+  const allUserMap: Record<string, string> = {};
+  (allUsers || []).forEach((u) => { allUserMap[String(u.id)] = u.nama; });
   (binaanAll || []).forEach((b) => {
-    if (userMap[String(b.penyimak_id)]) binaanMap[String(b.santri_id)] = userMap[String(b.penyimak_id)];
+    if (allUserMap[String(b.penyimak_id)]) binaanMap[`${b.santri_id}|${b.halaqah_id}`] = allUserMap[String(b.penyimak_id)];
   });
+  const halaqahMap = await getHalaqahMap();
 
   return rows.map((r) => {
     const s = santriMap[String(r.santri_id)];
@@ -38,7 +43,8 @@ export async function enrichSetoranRows(rows: any[]): Promise<any[]> {
       ...r,
       nama_siswa: s ? s.nama : '-',
       kelas_nama: s && s.kelas_id ? kelasMap[String(s.kelas_id)] || '-' : '-',
-      guru_pengampu: (r.penyimak_id && userMap[String(r.penyimak_id)]) || binaanMap[String(r.santri_id)] || '-',
+      halaqah_nama: r.halaqah_id && halaqahMap[String(r.halaqah_id)] ? halaqahMap[String(r.halaqah_id)].nama : '-',
+      guru_pengampu: (r.penyimak_id && userMap[String(r.penyimak_id)]) || binaanMap[`${r.santri_id}|${r.halaqah_id}`] || '-',
     };
   });
 }

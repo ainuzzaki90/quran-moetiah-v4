@@ -1,9 +1,12 @@
 import { getSupabaseAdmin } from './supabase';
 
-export async function getSantriIdsForPenyimak(penyimakId: number): Promise<string[]> {
+/** Id siswa binaan seorang penyimak. Jika halaqahId diberikan, hanya di halaqah itu. */
+export async function getSantriIdsForPenyimak(penyimakId: number, halaqahId?: string | null): Promise<string[]> {
   const db = getSupabaseAdmin();
-  const { data } = await db.from('penyimak_santri').select('santri_id').eq('penyimak_id', penyimakId);
-  return (data || []).map((r) => String(r.santri_id));
+  let q = db.from('penyimak_santri').select('santri_id').eq('penyimak_id', penyimakId);
+  if (halaqahId) q = q.eq('halaqah_id', halaqahId);
+  const { data } = await q;
+  return Array.from(new Set((data || []).map((r) => String(r.santri_id))));
 }
 
 export async function isSantriBinaanPenyimak(santriId: number, penyimakId: number) {

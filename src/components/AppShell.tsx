@@ -9,6 +9,7 @@ import Topbar from './Topbar';
 import DashboardView from './views/Dashboard';
 import SantriView from './views/Santri';
 import KelasView from './views/Kelas';
+import HalaqahView from './views/Halaqah';
 import SetoranView from './views/Setoran';
 import PresensiView from './views/Presensi';
 import StatistikView from './views/Statistik';
@@ -87,6 +88,7 @@ export default function AppShell() {
           {view === 'dashboard' && <DashboardView user={user} />}
           {view === 'santri' && <SantriView user={user} />}
           {view === 'kelas' && <KelasView user={user} />}
+          {view === 'halaqah' && <HalaqahView user={user} />}
           {view === 'setoran' && <SetoranView user={user} />}
           {view === 'presensi' && <PresensiView user={user} />}
           {view === 'statistik' && <StatistikView user={user} />}

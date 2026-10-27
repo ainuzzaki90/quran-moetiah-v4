@@ -3,6 +3,7 @@ import { requireAuth } from '@/lib/auth';
 import { getSupabaseAdmin } from '@/lib/supabase';
 import { getToken, jsonOk, withErrorHandling } from '@/lib/api-helpers';
 import { getSantriIdsForPenyimak } from '@/lib/relations';
+import { parseHalaqahParam } from '@/lib/halaqah';
 import { computeDateRange, computeCapaianTerakhir } from '@/lib/helpers';
 
 // GET /api/statistik?periode=harian|pekanan|bulanan|tentatif&tanggal_referensi=&tanggal_mulai=&tanggal_selesai=&santri_id=&kelas_id=
@@ -12,7 +13,9 @@ export const GET = withErrorHandling(async (req: NextRequest) => {
   const params = Object.fromEntries(req.nextUrl.searchParams.entries());
   const { start, end } = computeDateRange(params);
 
-  const { data: setoranAllTime } = await db.from('setoran').select('*');
+  const hq = parseHalaqahParam(params.halaqah_id);
+  const { data: setoranAllRaw } = await db.from('setoran').select('*');
+  const setoranAllTime = (setoranAllRaw || []).filter((s) => !hq || String(s.halaqah_id) === hq);
   let setoran = (setoranAllTime || []).filter((s) => {
     const d = new Date(s.tanggal);
     return d >= start && d <= end;

@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import HalaqahSelect, { useHalaqah } from '../HalaqahSelect';
 import * as XLSX from 'xlsx';
 import { api } from '@/lib/api-client';
 import { buildRaporHtml } from '@/lib/rapor';
@@ -17,6 +18,15 @@ export default function RekapView({ user }: { user: User }) {
   // Tahun ajaran berjalan (Juli-Juni): kalau sekarang bulan 1-6, tahun ajaran dimulai tahun lalu.
   const tahunAjaranSekarang = now.getMonth() + 1 >= 7 ? now.getFullYear() : now.getFullYear() - 1;
 
+  const { list: halaqahList, loaded: halaqahLoaded } = useHalaqah();
+  const [halaqahId, setHalaqahId] = useState(''); // default: halaqah yang masuk rapor utama
+  useEffect(() => {
+    if (halaqahLoaded && !halaqahId) {
+      const utama = halaqahList.find((h) => h.masuk_rapor) || halaqahList[0];
+      setHalaqahId(utama ? String(utama.id) : 'semua');
+    }
+  }, [halaqahLoaded, halaqahList]);
+  const halaqahNama = halaqahList.find((h) => String(h.id) === halaqahId)?.nama || '';
   const [mode, setMode] = useState<Mode>('bulanan');
   const [tahun, setTahun] = useState(now.getFullYear());
   const [bulan, setBulan] = useState(now.getMonth() + 1);
@@ -53,21 +63,25 @@ export default function RekapView({ user }: { user: User }) {
   }
 
   function filenameSuffix() {
+    return filenameSuffixBase() + (halaqahNama ? '-' + halaqahNama.replace(/\s+/g, '') : '');
+  }
+  function filenameSuffixBase() {
     if (mode === 'semester') return `Semester-${semester === 1 ? 'Ganjil' : 'Genap'}-${tahunAjaranAwal}-${tahunAjaranAwal + 1}`;
     if (mode === 'kustom') return `${BULAN_NAMA[kustomMulai]}-${BULAN_NAMA[kustomAkhir]}-${kustomTahun}`;
     return `${BULAN_NAMA[bulan]}-${tahun}`;
   }
 
   function load() {
+    if (!halaqahId) return;
     setLoading(true); setError('');
-    const p = queryParams();
+    const p = { ...queryParams(), halaqah_id: halaqahId };
     const qs = new URLSearchParams(Object.fromEntries(Object.entries(p).map(([k, v]) => [k, String(v)])));
     api.get(`/rekap?${qs.toString()}`)
       .then((res) => setData(res))
       .catch((e) => setError(e.message))
       .finally(() => setLoading(false));
   }
-  useEffect(load, [mode, tahun, bulan, tahunAjaranAwal, semester, kustomTahun, kustomMulai, kustomAkhir]);
+  useEffect(load, [mode, tahun, bulan, tahunAjaranAwal, semester, kustomTahun, kustomMulai, kustomAkhir, halaqahId]);
 
   function periodeMeta() {
     const periodeLabel = periodeLabelDisplay();
@@ -149,6 +163,9 @@ export default function RekapView({ user }: { user: User }) {
 
       <div className="tf-panel">
         <div className="tf-panel-body">
+          <div style={{ maxWidth: 360 }}>
+            <HalaqahSelect list={halaqahList} value={halaqahId} onChange={setHalaqahId} allowAll label="Halaqah (rapor utama = halaqah yang masuk rapor)" />
+          </div>
           <div className="tf-tabs" style={{ marginBottom: 14 }}>
             <button className={`tf-tab ${mode === 'bulanan' ? 'active' : ''}`} onClick={() => setMode('bulanan')}>📅 Bulanan</button>
             <button className={`tf-tab ${mode === 'semester' ? 'active' : ''}`} onClick={() => setMode('semester')}>🎓 Semester</button>

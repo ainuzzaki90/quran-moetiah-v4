@@ -138,3 +138,8 @@ alter table login_attempts enable row level security;
 -- ini perlu dibuat manual sekali karena bcrypt hash dibuat di sisi Node, bukan
 -- SQL). Jalankan skrip `npm run seed` (lihat README) setelah `npm install`
 -- untuk membuat akun admin ini secara otomatis dengan password ter-hash benar.
+
+-- ============================================================
+--  CATATAN: Fitur Halaqah (Pagi/Malam) ada di file terpisah:
+--  supabase/migration-halaqah.sql  -> jalankan SETELAH file ini.
+-- ============================================================

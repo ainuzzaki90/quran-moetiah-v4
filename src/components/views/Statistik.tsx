@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { api } from '@/lib/api-client';
+import { useHalaqah, halaqahLabel } from '../HalaqahSelect';
 import type { User } from '../AppShell';
 
 const MEDALS = ['🥇', '🥈', '🥉'];
@@ -12,6 +13,8 @@ export default function StatistikView({ user }: { user: User }) {
   const [tanggalRef, setTanggalRef] = useState(new Date().toISOString().substring(0, 10));
   const [tanggalMulai, setTanggalMulai] = useState(new Date().toISOString().substring(0, 10));
   const [tanggalSelesai, setTanggalSelesai] = useState(new Date().toISOString().substring(0, 10));
+  const { list: halaqahList } = useHalaqah();
+  const [halaqahId, setHalaqahId] = useState('semua');
   const [santriId, setSantriId] = useState('all');
   const [data, setData] = useState<any>(null);
   const [error, setError] = useState('');
@@ -24,7 +27,7 @@ export default function StatistikView({ user }: { user: User }) {
 
   function loadStatistik() {
     setLoading(true); setError('');
-    const params = new URLSearchParams({ periode, santri_id: santriId });
+    const params = new URLSearchParams({ periode, santri_id: santriId, halaqah_id: halaqahId });
     if (periode === 'tentatif') {
       params.set('tanggal_mulai', tanggalMulai);
       params.set('tanggal_selesai', tanggalSelesai);
@@ -67,6 +70,10 @@ export default function StatistikView({ user }: { user: User }) {
             <select value={santriId} onChange={(e) => setSantriId(e.target.value)}>
               <option value="all">Semua Siswa</option>
               {santriList.map((s) => <option key={s.id} value={s.id}>{s.nama}</option>)}
+            </select>
+            <select value={halaqahId} onChange={(e) => setHalaqahId(e.target.value)}>
+              <option value="semua">Semua Halaqah</option>
+              {halaqahList.map((h) => <option key={h.id} value={h.id}>{halaqahLabel(h)}</option>)}
             </select>
             <button className="tf-btn-sm" onClick={loadStatistik}>Tampilkan</button>
           </div>

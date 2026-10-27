@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react';
 import { api } from '@/lib/api-client';
 import { ROLE_LABELS } from '@/lib/menu';
+import HalaqahSelect, { useHalaqah } from '../HalaqahSelect';
 import type { User } from '../AppShell';
 
 export default function DashboardView({ user }: { user: User }) {
@@ -11,16 +12,23 @@ export default function DashboardView({ user }: { user: User }) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
 
+  const { list: halaqahList } = useHalaqah();
+  const [halaqahId, setHalaqahId] = useState('semua');
+
   useEffect(() => {
-    api.get('/dashboard')
+    setLoading(true);
+    api.get(`/dashboard?halaqah_id=${halaqahId}`)
       .then((res) => { setStats(res.stats); setTerbaru(res.setoran_terbaru || []); })
       .catch((e) => setError(e.message))
       .finally(() => setLoading(false));
-  }, []);
+  }, [halaqahId]);
 
   return (
     <div>
       <h1 className="tf-title">Dashboard {ROLE_LABELS[user.role]}</h1>
+      <div style={{ maxWidth: 320 }}>
+        <HalaqahSelect list={halaqahList} value={halaqahId} onChange={setHalaqahId} allowAll />
+      </div>
       {loading && <div className="tf-empty">Memuat...</div>}
       {error && <div className="tf-error">{error}</div>}
       {stats && (
@@ -51,7 +59,7 @@ export default function DashboardView({ user }: { user: User }) {
           ) : (
             <table className="tf-table">
               <thead>
-                <tr><th>Tanggal</th><th>Nama Siswa</th><th>Kelas</th><th>Guru Pengampu</th><th>Jenis</th><th>Surah/Halaman</th><th>Nilai</th><th>Predikat</th></tr>
+                <tr><th>Tanggal</th><th>Nama Siswa</th><th>Kelas</th><th>Halaqah</th><th>Guru Pengampu</th><th>Jenis</th><th>Surah/Halaman</th><th>Nilai</th><th>Predikat</th></tr>
               </thead>
               <tbody>
                 {terbuah(terbaru)}
@@ -70,6 +78,7 @@ function terbuah(rows: any[]) {
       <td>{String(r.tanggal).substring(0, 10)}</td>
       <td>{r.nama_siswa || '-'}</td>
       <td>{r.kelas_nama || '-'}</td>
+      <td>{r.halaqah_nama || '-'}</td>
       <td>{r.guru_pengampu || '-'}</td>
       <td>{r.jenis}</td>
       <td>{r.jenis === 'Setoran Metode Ummi' ? `Hal. ${r.halaman_selesai || r.halaman_mulai || '-'}` : (r.surah_selesai || r.surah || '-')}</td>

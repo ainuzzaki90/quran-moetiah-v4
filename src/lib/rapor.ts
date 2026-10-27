@@ -82,6 +82,25 @@ export function buildRaporHtml(
 
   const hariHadir = new Set((d.detail || []).map((r: any) => String(r.tanggal || '').split('T')[0]).filter(Boolean)).size;
 
+  const rh: any[] = d.ringkasan_halaqah || [];
+  const halaqahBlock = rh.length > 1 ? `
+      <div class="rp-sec">Ringkasan per Halaqah</div>
+      <table class="rp-table">
+        <thead><tr>
+          <th style="text-align:left;">Halaqah</th><th style="text-align:left;">Guru Pengampu</th>
+          <th>Setoran</th><th>Rata-rata Nilai</th><th>Kehadiran</th>
+        </tr></thead>
+        <tbody>${rh.map((h) => `<tr>
+          <td style="text-align:left;">${escapeHtml(h.halaqah_nama)}${h.masuk_rapor ? '' : ' *'}</td>
+          <td style="text-align:left;">${escapeHtml(h.guru_nama || '-')}</td>
+          <td>${h.total_setoran}</td>
+          <td>${h.total_setoran ? h.rata_nilai : '-'}</td>
+          <td>${h.total_presensi ? h.hadir + '/' + h.total_presensi : '-'}</td>
+        </tr>`).join('')}</tbody>
+      </table>
+      ${rh.some((h) => !h.masuk_rapor) ? '<div style="font-size:10px;margin:-6px 0 10px;color:#555;">* Dicatat terpisah, tidak termasuk dalam rata-rata nilai rapor utama.</div>' : ''}
+  ` : '';
+
   const ummiRows = byJ['Setoran Metode Ummi'];
   let ummiBlock = '';
   if (ummiRows.length) {
@@ -195,6 +214,8 @@ export function buildRaporHtml(
 
       <div class="rp-sec" style="margin-top:10px;">Grafik Rata-rata Nilai per Jenis</div>
       <div style="margin-bottom:13px;">${bars}</div>
+
+      ${halaqahBlock}
 
       <div class="rp-sec">Catatan Guru Pengampu</div>
       <div class="rp-catatan" style="font-style:normal;">${escapeHtml(catatanText)}</div>

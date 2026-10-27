@@ -5,6 +5,7 @@ import { api } from '@/lib/api-client';
 import { ROLE_LABELS } from '@/lib/menu';
 import { useSortable } from '@/lib/use-sortable';
 import { showToast } from '@/lib/toast';
+import HalaqahSelect, { useHalaqah } from '../HalaqahSelect';
 import Modal from '../Modal';
 
 const ROLE_OPTIONS = ['admin', 'penyimak', 'santri', 'tamu'] as const;
@@ -20,6 +21,8 @@ export default function UsersView() {
   const [changingPwFor, setChangingPwFor] = useState<any | null>(null);
   const [newPw, setNewPw] = useState('');
 
+  const { list: halaqahList } = useHalaqah();
+  const [binaanHalaqah, setBinaanHalaqah] = useState('');
   const [binaanFor, setBinaanFor] = useState<number | null>(null);
   const [binaanChecked, setBinaanChecked] = useState<Set<number>>(new Set());
   const [binaanSearch, setBinaanSearch] = useState('');
@@ -84,14 +87,20 @@ export default function UsersView() {
     } catch (e: any) { setError(e.message); }
   }
 
-  async function bukaBinaan(u: any) {
+  async function muatBinaan(userId: number, halaqahId: string) {
     setError('');
     try {
-      const res = await api.get(`/penyimak-santri?penyimak_id=${u.id}`);
+      const res = await api.get(`/penyimak-santri?penyimak_id=${userId}&halaqah_id=${halaqahId}`);
       setBinaanChecked(new Set((res.data || []).map((r: any) => Number(r.santri_id))));
-      setBinaanFor(u.id);
-      setBinaanSearch('');
     } catch (e: any) { setError(e.message); }
+  }
+
+  async function bukaBinaan(u: any) {
+    const hid = binaanHalaqah || (halaqahList[0] ? String(halaqahList[0].id) : '');
+    setBinaanHalaqah(hid);
+    setBinaanFor(u.id);
+    setBinaanSearch('');
+    await muatBinaan(u.id, hid);
   }
 
   function toggleBinaan(santriId: number) {
@@ -105,7 +114,7 @@ export default function UsersView() {
   async function simpanBinaan() {
     if (binaanFor === null) return;
     try {
-      await api.post('/penyimak-santri', { penyimak_id: binaanFor, santri_ids: Array.from(binaanChecked) });
+      await api.post('/penyimak-santri', { penyimak_id: binaanFor, halaqah_id: Number(binaanHalaqah), santri_ids: Array.from(binaanChecked) });
       showToast('Data siswa binaan berhasil disimpan');
       setBinaanFor(null);
     } catch (e: any) { setError(e.message); }
@@ -249,7 +258,13 @@ export default function UsersView() {
             Siswa Binaan — {list.find((u) => u.id === binaanFor)?.nama}
           </div>
           <div className="tf-panel-body">
-            <p className="tf-empty" style={{ marginBottom: 8 }}>Pilih siswa yang diampu penyimak ini. Boleh lintas kelas & lintas level.</p>
+            <HalaqahSelect
+              list={halaqahList}
+              value={binaanHalaqah}
+              onChange={(v) => { setBinaanHalaqah(v); if (binaanFor !== null) muatBinaan(binaanFor, v); }}
+              label="Halaqah (binaan diatur terpisah per halaqah)"
+            />
+            <p className="tf-empty" style={{ marginBottom: 8 }}>Pilih siswa yang diampu penyimak ini di halaqah di atas. Boleh lintas kelas & lintas level.</p>
             <input
               placeholder="Cari nama siswa..."
               value={binaanSearch}

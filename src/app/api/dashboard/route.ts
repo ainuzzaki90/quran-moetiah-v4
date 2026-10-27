@@ -3,6 +3,7 @@ import { requireAuth } from '@/lib/auth';
 import { getSupabaseAdmin } from '@/lib/supabase';
 import { getToken, jsonOk, withErrorHandling } from '@/lib/api-helpers';
 import { getSantriIdsForPenyimak } from '@/lib/relations';
+import { parseHalaqahParam } from '@/lib/halaqah';
 import { enrichSetoranRows } from '@/lib/enrich';
 
 export const GET = withErrorHandling(async (req: NextRequest) => {
@@ -11,7 +12,8 @@ export const GET = withErrorHandling(async (req: NextRequest) => {
 
   const { data: setoranAll } = await db.from('setoran').select('*');
   const { data: santriAll } = await db.from('santri').select('*');
-  let setoran = setoranAll || [];
+  const hq = parseHalaqahParam(req.nextUrl.searchParams.get('halaqah_id'));
+  let setoran = (setoranAll || []).filter((s) => !hq || String(s.halaqah_id) === hq);
   let santri = santriAll || [];
 
   if (session.role === 'penyimak') {

@@ -2,6 +2,7 @@ import { NextRequest } from 'next/server';
 import { requireAuth } from '@/lib/auth';
 import { getSupabaseAdmin } from '@/lib/supabase';
 import { getToken, jsonOk, withErrorHandling } from '@/lib/api-helpers';
+import { parseHalaqahParam, getHalaqahMap } from '@/lib/halaqah';
 import { getSantriIdsForPenyimak } from '@/lib/relations';
 import { computeCapaianTerakhir, getTahunAjaran } from '@/lib/helpers';
 
@@ -17,6 +18,8 @@ export const GET = withErrorHandling(async (req: NextRequest) => {
   const bulanAkhir = Number(params.get('bulan_akhir') || bulanTunggal || 12);
   const periodLabel = bulanMulai === bulanAkhir ? bulanTunggal : `${bulanMulai}-${bulanAkhir}`;
 
+  const hq = parseHalaqahParam(params.get('halaqah_id'));
+  const halaqahMap = await getHalaqahMap();
   const { data: setoranAll } = await db.from('setoran').select('*');
   let setoran = (setoranAll || []).filter((s) => {
     const d = new Date(s.tanggal);
@@ -24,6 +27,9 @@ export const GET = withErrorHandling(async (req: NextRequest) => {
     return d.getFullYear() === tahun && m >= bulanMulai && m <= bulanAkhir;
   });
 
+  const setoranSemuaHalaqah = setoran;
+  if (hq) setoran = setoran.filter((s) => String(s.halaqah_id) === hq);
+  const { data: presensiAll } = await db.from('presensi').select('santri_id, tanggal, status, halaqah_id');
   const { data: santriAll } = await db.from('santri').select('*');
   let santriList = santriAll || [];
   const { data: kelasAll } = await db.from('kelas').select('*');
@@ -51,7 +57,9 @@ export const GET = withErrorHandling(async (req: NextRequest) => {
     const kelas = (kelasAll || []).find((k) => String(k.id) === String(santri.kelas_id));
 
     let penyimakNama = '';
-    const relasi = (penyimakSantriAll || []).find((r) => String(r.santri_id) === String(santri.id));
+    const relasi = (penyimakSantriAll || []).find(
+      (r) => String(r.santri_id) === String(santri.id) && (!hq || String(r.halaqah_id) === hq)
+    );
     if (relasi) {
       const pUser = (usersAll || []).find((u) => String(u.id) === String(relasi.penyimak_id));
       if (pUser) penyimakNama = pUser.nama;
@@ -68,6 +76,39 @@ export const GET = withErrorHandling(async (req: NextRequest) => {
 
     const capaian = computeCapaianTerakhir(rows as any);
 
+    // Ringkasan per halaqah (Pagi / Malam dst) -- dicatat terpisah, tidak dicampur ke rata-rata utama
+    const ringkasanHalaqah = Object.values(halaqahMap)
+      .sort((a: any, b: any) => a.urutan - b.urutan)
+      .map((h: any) => {
+        const rh = setoranSemuaHalaqah.filter(
+          (s) => String(s.santri_id) === String(santri.id) && String(s.halaqah_id) === String(h.id)
+        );
+        const na = rh.map((r) => Number(r.nilai)).filter((n) => !isNaN(n));
+        const rataH = na.length ? na.reduce((a, b) => a + b, 0) / na.length : 0;
+        const rel = (penyimakSantriAll || []).find(
+          (r) => String(r.santri_id) === String(santri.id) && String(r.halaqah_id) === String(h.id)
+        );
+        const guru = rel ? (usersAll || []).find((u) => String(u.id) === String(rel.penyimak_id)) : null;
+        const pres = (presensiAll || []).filter((p) => {
+          const d = new Date(p.tanggal);
+          return (
+            String(p.santri_id) === String(santri.id) && String(p.halaqah_id) === String(h.id) &&
+            d.getFullYear() === tahun && d.getMonth() + 1 >= bulanMulai && d.getMonth() + 1 <= bulanAkhir
+          );
+        });
+        const hadir = pres.filter((p) => (p.status || 'Hadir') === 'Hadir').length;
+        return {
+          halaqah_id: h.id,
+          halaqah_nama: h.nama,
+          masuk_rapor: h.masuk_rapor,
+          guru_nama: guru ? guru.nama : '',
+          total_setoran: rh.length,
+          rata_nilai: Math.round(rataH * 100) / 100,
+          hadir,
+          total_presensi: pres.length,
+        };
+      });
+
     return {
       santri_id: santri.id,
       nama: santri.nama,
@@ -80,11 +121,12 @@ export const GET = withErrorHandling(async (req: NextRequest) => {
       halaman_terakhir: capaian.halaman ? capaian.halaman.label : '-',
       surah_terakhir: capaian.surah ? capaian.surah.label : '-',
       detail: rows,
+      ringkasan_halaqah: ringkasanHalaqah,
     };
   });
 
   const taRef = new Date(tahun, bulanMulai === 1 ? 0 : bulanMulai - 1, 1);
   const ta = getTahunAjaran(taRef);
 
-  return jsonOk({ bulan: periodLabel, tahun, tahun_ajaran: ta.tahun_ajaran, semester: ta.semester, data: hasil });
+  return jsonOk({ halaqah_id: hq, bulan: periodLabel, tahun, tahun_ajaran: ta.tahun_ajaran, semester: ta.semester, data: hasil });
 });

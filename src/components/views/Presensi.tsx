@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { api } from '@/lib/api-client';
+import HalaqahSelect, { useHalaqah } from '../HalaqahSelect';
 import type { User } from '../AppShell';
 
 const STATUS_OPTIONS = [
@@ -16,6 +17,9 @@ function todayStr() {
 }
 
 export default function PresensiView({ user }: { user: User }) {
+  const { list: halaqahList } = useHalaqah();
+  const [halaqahId, setHalaqahId] = useState('');
+  const [rekapHalaqah, setRekapHalaqah] = useState('semua');
   const [tab, setTab] = useState<'input' | 'rekap'>('input');
   const [santriList, setSantriList] = useState<any[]>([]);
   const [tanggal, setTanggal] = useState(todayStr());
@@ -33,9 +37,10 @@ export default function PresensiView({ user }: { user: User }) {
 
   function load() {
     setLoading(true);
+    if (!halaqahId) return;
     Promise.all([
-      api.get('/santri?binaan_only=1'),
-      api.get('/presensi'),
+      api.get(`/santri?binaan_only=1&halaqah_id=${halaqahId}`),
+      api.get(`/presensi?halaqah_id=${halaqahId}`),
     ])
       .then(([s, p]) => {
         setSantriList(s.data);
@@ -47,11 +52,12 @@ export default function PresensiView({ user }: { user: User }) {
       .catch((e) => setError(e.message))
       .finally(() => setLoading(false));
   }
-  useEffect(load, []);
+  useEffect(load, [halaqahId]);
 
   function loadRekap() {
     setRekapLoading(true);
     const qs = new URLSearchParams();
+    qs.set('halaqah_id', rekapHalaqah);
     if (rekapMulai) qs.set('tanggal_mulai', rekapMulai);
     if (rekapAkhir) qs.set('tanggal_akhir', rekapAkhir);
     api.get(`/presensi/rekap?${qs.toString()}`)
@@ -66,7 +72,7 @@ export default function PresensiView({ user }: { user: User }) {
     if (!santriList.length) { setError('Belum ada siswa binaan untuk dipresensi'); return; }
     try {
       const rows = santriList.map((s) => ({ santri_id: s.id, kelas_id: s.kelas_id, status: status[s.id] || 'Hadir' }));
-      await api.post('/presensi', { tanggal, materi, rows });
+      await api.post('/presensi', { tanggal, materi, halaqah_id: Number(halaqahId), rows });
       setOk('Presensi berhasil disimpan.');
       load();
     } catch (e: any) { setError(e.message); }
@@ -94,6 +100,7 @@ export default function PresensiView({ user }: { user: User }) {
           <div className="tf-panel">
             <div className="tf-panel-head">Input Presensi</div>
             <div className="tf-panel-body">
+              <HalaqahSelect list={halaqahList} value={halaqahId} onChange={setHalaqahId} label="Halaqah / Sesi" />
               <div className="tf-field">
                 <label>Tanggal</label>
                 <input type="date" value={tanggal} onChange={(e) => setTanggal(e.target.value)} />
@@ -174,6 +181,7 @@ export default function PresensiView({ user }: { user: User }) {
         <div className="tf-panel">
           <div className="tf-panel-head">Rekap Kehadiran</div>
           <div className="tf-panel-body">
+            <HalaqahSelect list={halaqahList} value={rekapHalaqah} onChange={setRekapHalaqah} allowAll label="Halaqah" />
             <div className="tf-field">
               <label>Dari Tanggal</label>
               <input type="date" value={rekapMulai} onChange={(e) => setRekapMulai(e.target.value)} />

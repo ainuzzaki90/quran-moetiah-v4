@@ -2,6 +2,7 @@ import { NextRequest } from 'next/server';
 import { requireAuth } from '@/lib/auth';
 import { getSupabaseAdmin } from '@/lib/supabase';
 import { getToken, jsonOk, withErrorHandling } from '@/lib/api-helpers';
+import { parseHalaqahParam } from '@/lib/halaqah';
 import { isSantriBinaanPenyimak } from '@/lib/relations';
 import { computeCapaianTerakhir } from '@/lib/helpers';
 
@@ -32,7 +33,10 @@ export const GET = withErrorHandling(async (req: NextRequest) => {
     ? new Date(params.get('tanggal_mulai')!)
     : new Date(end.getTime() - 90 * 24 * 60 * 60 * 1000);
 
-  const { data: setoranSantri } = await db.from('setoran').select('*').eq('santri_id', santriId);
+  const hq = parseHalaqahParam(params.get('halaqah_id'));
+  let setoranQ = db.from('setoran').select('*').eq('santri_id', santriId);
+  if (hq) setoranQ = setoranQ.eq('halaqah_id', hq);
+  const { data: setoranSantri } = await setoranQ;
   const setoran = (setoranSantri || [])
     .filter((s) => { const d = new Date(s.tanggal); return d >= start && d <= end; })
     .sort((a, b) => new Date(a.tanggal).getTime() - new Date(b.tanggal).getTime());
@@ -72,7 +76,9 @@ export const GET = withErrorHandling(async (req: NextRequest) => {
     rataPerMinggu[k] = Math.round((perMinggu[k].total / perMinggu[k].count) * 100) / 100;
   });
 
-  const { data: presensiSantri } = await db.from('presensi').select('*').eq('santri_id', santriId);
+  let presQ = db.from('presensi').select('*').eq('santri_id', santriId);
+  if (hq) presQ = presQ.eq('halaqah_id', hq);
+  const { data: presensiSantri } = await presQ;
   const presensi = (presensiSantri || []).filter((p) => { const d = new Date(p.tanggal); return d >= start && d <= end; });
 
   const hadirCount = { hadir: 0, izin: 0, sakit: 0, alfa: 0 };

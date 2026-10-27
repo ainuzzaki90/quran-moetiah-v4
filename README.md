@@ -141,3 +141,8 @@ scripts/
 ---
 
 © {TAHUN} SMP Islam Moetiah — dikembangkan oleh Abdal Ainuz Zaki, B.A.
+
+## Update: Halaqah Pagi & Halaqah Malam
+Jalankan `supabase/migration-halaqah.sql` di Supabase SQL Editor **sekali** sebelum memakai versi ini.
+Data lama otomatis masuk ke "Halaqah Pagi". Admin mengatur halaqah di menu "Data Halaqah" dan guru
+pengampu per halaqah di "Pengguna -> Siswa Binaan".

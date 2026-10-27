@@ -12,7 +12,7 @@ export const PUT = withErrorHandling(async (req: NextRequest, { params }: { para
   [
     'nilai', 'predikat', 'jenis', 'catatan', 'halaman_mulai', 'halaman_selesai',
     'surah', 'surah_selesai', 'ayat_mulai', 'ayat_selesai',
-    'nilai_tajwid', 'nilai_fashohah', 'nilai_kelancaran',
+    'nilai_tajwid', 'nilai_fashohah', 'nilai_kelancaran', 'halaqah_id',
   ].forEach((f) => {
     if (payload[f] !== undefined) updates[f] = payload[f];
   });

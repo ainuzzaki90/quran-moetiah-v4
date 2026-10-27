@@ -2,6 +2,7 @@ import { NextRequest } from 'next/server';
 import { requireAuth } from '@/lib/auth';
 import { getSupabaseAdmin } from '@/lib/supabase';
 import { getToken, jsonOk, withErrorHandling } from '@/lib/api-helpers';
+import { parseHalaqahParam, getDefaultHalaqahId } from '@/lib/halaqah';
 import { getSantriIdsForPenyimak } from '@/lib/relations';
 import { computeCapaianTerakhir } from '@/lib/helpers';
 
@@ -24,14 +25,17 @@ export const GET = withErrorHandling(async (req: NextRequest) => {
 
   // binaan_only=true -> penyimak hanya lihat siswa binaannya (dropdown setoran)
   if (session.role === 'penyimak' && params.get('binaan_only')) {
-    const binaanIds = await getSantriIdsForPenyimak(session.user_id);
+    const binaanIds = await getSantriIdsForPenyimak(session.user_id, parseHalaqahParam(params.get('halaqah_id')));
     list = list.filter((s) => binaanIds.includes(String(s.id)));
   }
 
   // with_posisi=true -> sertakan halaman/surah terakhir tiap siswa + guru pengampu (binaan)
   if (params.get('with_posisi')) {
-    const { data: setoranAll } = await db.from('setoran').select('*');
-    const { data: binaanAll } = await db.from('penyimak_santri').select('*');
+    const hq = parseHalaqahParam(params.get('halaqah_id'));
+    const { data: setoranRaw } = await db.from('setoran').select('*');
+    const setoranAll = (setoranRaw || []).filter((r) => !hq || String(r.halaqah_id) === hq);
+    const { data: binaanRaw } = await db.from('penyimak_santri').select('*');
+    const binaanAll = (binaanRaw || []).filter((b) => !hq || String(b.halaqah_id) === hq);
     const { data: usersAll } = await db.from('users').select('id, nama');
     const guruMap: Record<string, string> = {};
     (binaanAll || []).forEach((b) => {
@@ -78,7 +82,13 @@ export const POST = withErrorHandling(async (req: NextRequest) => {
   if (error) throw new Error(error.message);
 
   if (session.role === 'penyimak') {
-    await db.from('penyimak_santri').insert({ penyimak_id: session.user_id, santri_id: row.id });
+    // Siswa baru dari penyimak otomatis jadi binaan di SEMUA halaqah aktif (semua siswa ikut keduanya)
+    const { data: hs } = await db.from('halaqah').select('id').eq('aktif', true);
+    const defId = await getDefaultHalaqahId();
+    const ids = (hs && hs.length ? hs.map((h) => h.id) : [defId]).filter(Boolean);
+    if (ids.length) {
+      await db.from('penyimak_santri').insert(ids.map((hid) => ({ penyimak_id: session.user_id, santri_id: row.id, halaqah_id: hid })));
+    }
   }
 
   return jsonOk({ data: row });
