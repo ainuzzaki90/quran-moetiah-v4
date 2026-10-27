@@ -4,6 +4,7 @@ import { getSupabaseAdmin } from '@/lib/supabase';
 import { getToken, jsonOk, withErrorHandling } from '@/lib/api-helpers';
 import { getSantriIdsForPenyimak } from '@/lib/relations';
 import { parseHalaqahParam } from '@/lib/halaqah';
+import { computeHafalan } from '@/lib/hafalan';
 import { computeDateRange, computeCapaianTerakhir } from '@/lib/helpers';
 
 // GET /api/statistik?periode=harian|pekanan|bulanan|tentatif&tanggal_referensi=&tanggal_mulai=&tanggal_selesai=&santri_id=&kelas_id=
@@ -53,6 +54,9 @@ export const GET = withErrorHandling(async (req: NextRequest) => {
   });
 
   const { data: kelasAll } = await db.from('kelas').select('*');
+  const { data: awalAll } = await db.from('hafalan_awal').select('santri_id, surah_no');
+  const awalMap: Record<string, number[]> = {};
+  (awalAll || []).forEach((a) => { (awalMap[String(a.santri_id)] = awalMap[String(a.santri_id)] || []).push(a.surah_no); });
   const peringkat = santriScope
     .map((santri) => {
       const rows = setoran.filter((s) => String(s.santri_id) === String(santri.id));
@@ -61,8 +65,17 @@ export const GET = withErrorHandling(async (req: NextRequest) => {
       const kelas = (kelasAll || []).find((k) => String(k.id) === String(santri.kelas_id));
       const rowsAllTime = (setoranAllTime || []).filter((s) => String(s.santri_id) === String(santri.id));
       const capaian = computeCapaianTerakhir(rowsAllTime as any);
+      // Hafalan bersifat kumulatif: semua periode & semua halaqah
+      const hafalan = computeHafalan(
+        (setoranAllRaw || []).filter((s) => String(s.santri_id) === String(santri.id)) as any,
+        awalMap[String(santri.id)] || []
+      );
       return {
         santri_id: santri.id,
+        surat_berurutan: hafalan.berurutan,
+        surat_berurutan_label: hafalan.berurutan_label,
+        surat_hafal: hafalan.surat_hafal,
+        total_ayat_hafal: hafalan.total_ayat,
         nama: santri.nama,
         kelas_nama: kelas ? kelas.nama_kelas : '',
         level_ummi: santri.level_ummi || '',

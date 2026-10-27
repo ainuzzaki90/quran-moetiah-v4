@@ -146,3 +146,6 @@ scripts/
 Jalankan `supabase/migration-halaqah.sql` di Supabase SQL Editor **sekali** sebelum memakai versi ini.
 Data lama otomatis masuk ke "Halaqah Pagi". Admin mengatur halaqah di menu "Data Halaqah" dan guru
 pengampu per halaqah di "Pengguna -> Siswa Binaan".
+
+## Update: Urutan Hafalan di Statistik
+Jalankan `supabase/migration-hafalan-awal.sql` di Supabase SQL Editor sekali sebelum memakai versi ini.
