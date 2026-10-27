@@ -205,8 +205,9 @@ export default function StatistikView({ user }: { user: User }) {
         <Modal onClose={() => setAwalFor(null)}>
           <h3>Hafalan Awal — {awalFor.nama}</h3>
           <p className="tf-empty" style={{ textAlign: 'left' }}>
-            Centang surat yang <b>sudah dihafal sebelum memakai aplikasi</b>. Setoran Hafalan Baru berikutnya
-            (nilai ≥ 75, sampai ayat terakhir) otomatis ikut dihitung.
+            Hanya untuk kasus khusus. Hafalan siswa sudah dihitung <b>otomatis dari setoran Hafalan Baru</b> (nilai ≥ 75):
+            surat terjauh yang disetor dianggap batas, dan semua surat dari An-Nas sampai batas itu dianggap hafal.
+            Centang di sini bila ada surat yang perlu ditambahkan secara manual.
           </p>
           <div className="tf-field">
             <label>Isi cepat: hafal berurutan dari An-Nas sampai</label>

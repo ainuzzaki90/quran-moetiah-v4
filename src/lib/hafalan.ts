@@ -14,6 +14,9 @@ type Row = { jenis: string; surah?: string | null; ayat_mulai?: any; surah_seles
  * Menghitung hafalan siswa.
  * - Sumber: setoran jenis "Hafalan Baru" dengan nilai >= MIN_NILAI_HAFAL, ditambah hafalan awal.
  * - Sebuah surat dihitung hafal bila seluruh ayatnya (1..jumlah ayat) sudah tercakup.
+ * - Asumsi menghafal berurutan dari An-Nas: surat terjauh yang disetor (nomor surat terkecil, nilai >= minimal)
+ *   dianggap batas; semua surat dari An-Nas sampai batas itu dianggap hafal. Jika surat batas belum
+ *   tercapai ayat terakhirnya, batas mundur satu surat (ayat parsialnya tetap dihitung di total ayat).
  * - Urutan menghafal tradisional: An-Nas (114) -> turun ke An-Naba (78) -> Juz 29 dst.
  *   `berurutan` = banyak surat yang hafal tanpa terputus mulai dari An-Nas.
  */
@@ -49,6 +52,14 @@ export function computeHafalan(rows: Row[], awalSurahNos: number[] = []) {
     const no = Number(k);
     if (covered[no].size >= AYAT[no]) hafal.add(no);
   });
+
+  // Isi otomatis: semua surat dari An-Nas sampai batas (surat terjauh yang disetor)
+  const reached = Object.keys(covered).map(Number);
+  if (reached.length) {
+    const minNo = Math.min(...reached);
+    const batas = covered[minNo].size >= AYAT[minNo] ? minNo : minNo + 1;
+    for (let n = 114; n >= batas; n--) hafal.add(n);
+  }
 
   // Ayat total: surat hafal penuh + ayat parsial dari surat yang belum penuh
   let totalAyat = 0;
