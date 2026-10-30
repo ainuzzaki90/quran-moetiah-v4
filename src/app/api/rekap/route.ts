@@ -57,13 +57,14 @@ export const GET = withErrorHandling(async (req: NextRequest) => {
     const kelas = (kelasAll || []).find((k) => String(k.id) === String(santri.kelas_id));
 
     let penyimakNama = '';
-    const relasi = (penyimakSantriAll || []).find(
+    // Semua halaqah: tampilkan semua guru pengampu siswa (Pagi & Malam), tanpa duplikat
+    const relasiList = (penyimakSantriAll || []).filter(
       (r) => String(r.santri_id) === String(santri.id) && (!hq || String(r.halaqah_id) === hq)
     );
-    if (relasi) {
-      const pUser = (usersAll || []).find((u) => String(u.id) === String(relasi.penyimak_id));
-      if (pUser) penyimakNama = pUser.nama;
-    }
+    const namaGuru = Array.from(new Set(
+      relasiList.map((r) => (usersAll || []).find((u) => String(u.id) === String(r.penyimak_id))?.nama).filter(Boolean)
+    ));
+    if (namaGuru.length) penyimakNama = namaGuru.join(' & ');
     if (!penyimakNama && rows.length) {
       const freq: Record<string, number> = {};
       rows.forEach((r) => { if (r.penyimak_id) freq[r.penyimak_id] = (freq[r.penyimak_id] || 0) + 1; });
@@ -74,7 +75,10 @@ export const GET = withErrorHandling(async (req: NextRequest) => {
       }
     }
 
-    const capaian = computeCapaianTerakhir(rows as any);
+    // Halaman/surah terakhir dibagi lintas halaqah (Pagi & Malam)
+    const capaian = computeCapaianTerakhir(
+      setoranSemuaHalaqah.filter((s) => String(s.santri_id) === String(santri.id)) as any
+    );
 
     // Ringkasan per halaqah (Pagi / Malam dst) -- dicatat terpisah, tidak dicampur ke rata-rata utama
     const ringkasanHalaqah = Object.values(halaqahMap)

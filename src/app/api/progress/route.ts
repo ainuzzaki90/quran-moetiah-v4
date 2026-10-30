@@ -94,11 +94,12 @@ export const GET = withErrorHandling(async (req: NextRequest) => {
   const totalPresensi = hadirCount.hadir + hadirCount.izin + hadirCount.sakit + hadirCount.alfa;
   const pctHadir = totalPresensi > 0 ? Math.round((hadirCount.hadir / totalPresensi) * 100) : null;
 
-  const capaian = computeCapaianTerakhir((setoranSantri || []) as any);
 
   // ---- Poin prestasi hafalan (kumulatif, semua halaqah) ----
   const { poin_per_halaman } = await getPengaturan();
   const { data: setoranSemua } = await db.from('setoran').select('*').eq('santri_id', santriId);
+  // Halaman/surah terakhir dibagi lintas halaqah
+  const capaian = computeCapaianTerakhir((setoranSemua || []) as any);
   const { data: awalRows } = await db.from('hafalan_awal').select('surah_no').eq('santri_id', santriId);
   const awal = (awalRows || []).map((a) => a.surah_no);
   const hafalSampaiAkhir = computeHafalan((setoranSemua || []).filter((s) => new Date(s.tanggal) <= end) as any, awal);

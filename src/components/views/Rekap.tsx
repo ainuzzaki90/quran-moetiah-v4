@@ -19,13 +19,7 @@ export default function RekapView({ user }: { user: User }) {
   const tahunAjaranSekarang = now.getMonth() + 1 >= 7 ? now.getFullYear() : now.getFullYear() - 1;
 
   const { list: halaqahList, loaded: halaqahLoaded } = useHalaqah();
-  const [halaqahId, setHalaqahId] = useState(''); // default: halaqah yang masuk rapor utama
-  useEffect(() => {
-    if (halaqahLoaded && !halaqahId) {
-      const utama = halaqahList.find((h) => h.masuk_rapor) || halaqahList[0];
-      setHalaqahId(utama ? String(utama.id) : 'semua');
-    }
-  }, [halaqahLoaded, halaqahList]);
+  const [halaqahId, setHalaqahId] = useState('semua'); // default: semua halaqah digabung (Pagi + Malam)
   const halaqahNama = halaqahList.find((h) => String(h.id) === halaqahId)?.nama || '';
   const [mode, setMode] = useState<Mode>('bulanan');
   const [tahun, setTahun] = useState(now.getFullYear());
@@ -164,7 +158,7 @@ export default function RekapView({ user }: { user: User }) {
       <div className="tf-panel">
         <div className="tf-panel-body">
           <div style={{ maxWidth: 360 }}>
-            <HalaqahSelect list={halaqahList} value={halaqahId} onChange={setHalaqahId} allowAll label="Halaqah (rapor utama = halaqah yang masuk rapor)" />
+            <HalaqahSelect list={halaqahList} value={halaqahId} onChange={setHalaqahId} allowAll label="Halaqah (Semua Halaqah = Pagi + Malam digabung)" />
           </div>
           <div className="tf-tabs" style={{ marginBottom: 14 }}>
             <button className={`tf-tab ${mode === 'bulanan' ? 'active' : ''}`} onClick={() => setMode('bulanan')}>📅 Bulanan</button>

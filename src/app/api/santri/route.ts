@@ -33,7 +33,9 @@ export const GET = withErrorHandling(async (req: NextRequest) => {
   if (params.get('with_posisi')) {
     const hq = parseHalaqahParam(params.get('halaqah_id'));
     const { data: setoranRaw } = await db.from('setoran').select('*');
-    const setoranAll = (setoranRaw || []).filter((r) => !hq || String(r.halaqah_id) === hq);
+    // Posisi hafalan/halaman terakhir dibagi lintas halaqah (Pagi & Malam): semua setoran dihitung.
+    // Hanya guru pengampu yang mengikuti halaqah terpilih.
+    const setoranAll = setoranRaw || [];
     const { data: binaanRaw } = await db.from('penyimak_santri').select('*');
     const binaanAll = (binaanRaw || []).filter((b) => !hq || String(b.halaqah_id) === hq);
     const { data: usersAll } = await db.from('users').select('id, nama');

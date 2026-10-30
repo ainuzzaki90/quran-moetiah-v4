@@ -65,7 +65,8 @@ export const GET = withErrorHandling(async (req: NextRequest) => {
       const nilaiArrS = rows.map((r) => Number(r.nilai)).filter((n) => !isNaN(n));
       const rataS = nilaiArrS.length ? nilaiArrS.reduce((a, b) => a + b, 0) / nilaiArrS.length : 0;
       const kelas = (kelasAll || []).find((k) => String(k.id) === String(santri.kelas_id));
-      const rowsAllTime = (setoranAllTime || []).filter((s) => String(s.santri_id) === String(santri.id));
+      // Capaian terakhir dibagi lintas halaqah
+      const rowsAllTime = (setoranAllRaw || []).filter((s) => String(s.santri_id) === String(santri.id));
       const capaian = computeCapaianTerakhir(rowsAllTime as any);
       // Hafalan bersifat kumulatif: semua periode & semua halaqah
       const hafalan = computeHafalan(

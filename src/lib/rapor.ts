@@ -91,14 +91,13 @@ export function buildRaporHtml(
           <th>Setoran</th><th>Rata-rata Nilai</th><th>Kehadiran</th>
         </tr></thead>
         <tbody>${rh.map((h) => `<tr>
-          <td style="text-align:left;">${escapeHtml(h.halaqah_nama)}${h.masuk_rapor ? '' : ' *'}</td>
+          <td style="text-align:left;">${escapeHtml(h.halaqah_nama)}</td>
           <td style="text-align:left;">${escapeHtml(h.guru_nama || '-')}</td>
           <td>${h.total_setoran}</td>
           <td>${h.total_setoran ? h.rata_nilai : '-'}</td>
           <td>${h.total_presensi ? h.hadir + '/' + h.total_presensi : '-'}</td>
         </tr>`).join('')}</tbody>
       </table>
-      ${rh.some((h) => !h.masuk_rapor) ? '<div style="font-size:10px;margin:-6px 0 10px;color:#555;">* Dicatat terpisah, tidak termasuk dalam rata-rata nilai rapor utama.</div>' : ''}
   ` : '';
 
   const ummiRows = byJ['Setoran Metode Ummi'];
