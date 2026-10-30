@@ -5,6 +5,7 @@ import { getToken, jsonOk, withErrorHandling } from '@/lib/api-helpers';
 import { getSantriIdsForPenyimak } from '@/lib/relations';
 import { parseHalaqahParam } from '@/lib/halaqah';
 import { computeHafalan } from '@/lib/hafalan';
+import { getPengaturan } from '@/lib/pengaturan';
 import { computeDateRange, computeCapaianTerakhir } from '@/lib/helpers';
 
 // GET /api/statistik?periode=harian|pekanan|bulanan|tentatif&tanggal_referensi=&tanggal_mulai=&tanggal_selesai=&santri_id=&kelas_id=
@@ -54,6 +55,7 @@ export const GET = withErrorHandling(async (req: NextRequest) => {
   });
 
   const { data: kelasAll } = await db.from('kelas').select('*');
+  const { poin_per_halaman } = await getPengaturan();
   const { data: awalAll } = await db.from('hafalan_awal').select('santri_id, surah_no');
   const awalMap: Record<string, number[]> = {};
   (awalAll || []).forEach((a) => { (awalMap[String(a.santri_id)] = awalMap[String(a.santri_id)] || []).push(a.surah_no); });
@@ -76,6 +78,8 @@ export const GET = withErrorHandling(async (req: NextRequest) => {
         surat_berurutan_label: hafalan.berurutan_label,
         surat_hafal: hafalan.surat_hafal,
         total_ayat_hafal: hafalan.total_ayat,
+        halaman_hafal: hafalan.halaman_hafal,
+        total_poin: Math.round(hafalan.halaman_hafal * poin_per_halaman * 100) / 100,
         nama: santri.nama,
         kelas_nama: kelas ? kelas.nama_kelas : '',
         level_ummi: santri.level_ummi || '',

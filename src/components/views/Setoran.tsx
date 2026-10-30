@@ -2,7 +2,8 @@
 
 import { useEffect, useMemo, useState } from 'react';
 import { api } from '@/lib/api-client';
-import { UMMI_RUBRIK, LEVEL_JILID_UMMI, MAX_HALAMAN_UMMI, calcPredikat } from '@/lib/helpers';
+import { UMMI_RUBRIK, LEVEL_JILID_UMMI, MAX_HALAMAN_UMMI, calcPredikat, DEFAULT_BOBOT, JENIS_PAKAI_ASPEK, hitungNilaiAspek, Bobot } from '@/lib/helpers';
+import AspekPicker, { emptySkor, SkorState } from '../AspekPicker';
 import { SURAH_PAGES } from '@/lib/surah-pages';
 import { showToast } from '@/lib/toast';
 import Modal from '../Modal';
@@ -12,8 +13,8 @@ import type { User } from '../AppShell';
 const JENIS_OPTIONS = ['Hafalan Baru', 'Murojaah', 'Tilawah'] as const;
 type Jenis = typeof JENIS_OPTIONS[number];
 
-type JenisFields = { surahMulai: string; ayatMulai: string; surahSelesai: string; ayatSelesai: string; nilai: string };
-const emptyJenisFields = (): JenisFields => ({ surahMulai: '', ayatMulai: '', surahSelesai: '', ayatSelesai: '', nilai: '' });
+type JenisFields = { surahMulai: string; ayatMulai: string; surahSelesai: string; ayatSelesai: string; nilai: string; skor: SkorState };
+const emptyJenisFields = (): JenisFields => ({ surahMulai: '', ayatMulai: '', surahSelesai: '', ayatSelesai: '', nilai: '', skor: emptySkor() });
 
 function isJilidUmmiLevel(level: string) {
   return LEVEL_JILID_UMMI.includes(level);
@@ -42,6 +43,9 @@ export default function SetoranView({ user }: { user: User }) {
   const { list: halaqahList } = useHalaqah();
   const [halaqahId, setHalaqahId] = useState('');
   const [filterHalaqah, setFilterHalaqah] = useState('semua');
+
+  const [bobot, setBobot] = useState<Bobot>(DEFAULT_BOBOT);
+  useEffect(() => { api.get('/pengaturan').then((r) => setBobot(r.bobot)).catch(() => {}); }, []);
 
   const [tanggal, setTanggal] = useState(nowDateTimeStr());
   const [santriId, setSantriId] = useState('');
@@ -140,8 +144,17 @@ export default function SetoranView({ user }: { user: User }) {
       if (!jenisChecked[j]) continue;
       const f = jenisFields[j];
       const surahSelesai = f.surahSelesai || f.surahMulai;
-      if (!f.surahMulai || !f.ayatMulai || !surahSelesai || !f.ayatSelesai || !f.nilai) {
-        setError(`Untuk jenis "${j}", surah awal, ayat awal, surah akhir, ayat akhir, dan nilai wajib diisi.`);
+      const pakaiAspek = JENIS_PAKAI_ASPEK.includes(j);
+      if (!f.surahMulai || !f.ayatMulai || !surahSelesai || !f.ayatSelesai) {
+        setError(`Untuk jenis "${j}", surah awal, ayat awal, surah akhir, dan ayat akhir wajib diisi.`);
+        return;
+      }
+      if (pakaiAspek && hitungNilaiAspek(f.skor, bobot) === null) {
+        setError(`Untuk jenis "${j}", keempat aspek penilaian (Makharijul huruf, Tajwid, Kelancaran, Ketepatan) wajib dipilih.`);
+        return;
+      }
+      if (!pakaiAspek && !f.nilai) {
+        setError(`Untuk jenis "${j}", nilai wajib diisi.`);
         return;
       }
       items.push({
@@ -150,7 +163,7 @@ export default function SetoranView({ user }: { user: User }) {
         surah_selesai: surahSelesai,
         ayat_mulai: f.ayatMulai,
         ayat_selesai: f.ayatSelesai,
-        nilai: Number(f.nilai),
+        ...(pakaiAspek ? { skor: f.skor } : { nilai: Number(f.nilai) }),
         catatan,
       });
     }
@@ -175,9 +188,27 @@ export default function SetoranView({ user }: { user: User }) {
 
   const [editing, setEditing] = useState<any | null>(null);
 
+  const [editSkor, setEditSkor] = useState<SkorState>(emptySkor());
+  function bukaEdit(r: any) {
+    setEditing({ ...r });
+    setEditSkor({
+      makharij: r.nilai_makharij != null ? String(r.nilai_makharij) : '',
+      tajwid: r.nilai_tajwid != null ? String(r.nilai_tajwid) : '',
+      kelancaran: r.nilai_kelancaran != null ? String(r.nilai_kelancaran) : '',
+      ketepatan: r.nilai_ketepatan != null ? String(r.nilai_ketepatan) : '',
+    });
+  }
+
   async function simpanEdit() {
     if (!editing) return;
     try {
+      if (JENIS_PAKAI_ASPEK.includes(editing.jenis) && hitungNilaiAspek(editSkor, bobot) !== null) {
+        await api.put(`/setoran/${editing.id}`, { skor: editSkor, catatan: editing.catatan });
+        showToast('Perubahan berhasil disimpan');
+        setEditing(null);
+        load();
+        return;
+      }
       const nilai = editing.nilai === '' || editing.nilai === null ? null : Number(editing.nilai);
       await api.put(`/setoran/${editing.id}`, {
         nilai, predikat: nilai !== null ? calcPredikat(nilai) : editing.predikat, catatan: editing.catatan,
@@ -338,10 +369,21 @@ export default function SetoranView({ user }: { user: User }) {
                       <div className="tf-empty" style={{ margin: '-2px 0 8px', fontSize: 11.5 }}>
                         Surah Akhir otomatis mengikuti Surah Awal — ubah jika siswa setor lebih dari satu surah dalam pertemuan ini.
                       </div>
-                      <div className="tf-field">
-                        <label>Nilai (0-100)</label>
-                        <input type="number" min={0} max={100} value={f.nilai} onChange={(e) => updateJenisField(j, 'nilai', e.target.value)} />
-                      </div>
+                      {JENIS_PAKAI_ASPEK.includes(j) ? (
+                        <div className="tf-field">
+                          <label>Penilaian (4 aspek)</label>
+                          <AspekPicker
+                            skor={f.skor}
+                            bobot={bobot}
+                            onChange={(k, v) => setJenisFields((prev) => ({ ...prev, [j]: { ...prev[j], skor: { ...prev[j].skor, [k]: v } } }))}
+                          />
+                        </div>
+                      ) : (
+                        <div className="tf-field">
+                          <label>Nilai (0-100)</label>
+                          <input type="number" min={0} max={100} value={f.nilai} onChange={(e) => updateJenisField(j, 'nilai', e.target.value)} />
+                        </div>
+                      )}
                     </div>
                   </div>
                 );
@@ -383,7 +425,7 @@ export default function SetoranView({ user }: { user: User }) {
                     <td>{r.nilai ?? '-'}</td>
                     <td>{r.predikat || '-'}</td>
                     <td style={{ whiteSpace: 'nowrap' }}>
-                      <button className="tf-btn-icon" title="Edit" onClick={() => setEditing({ ...r })}>✏️</button>
+                      <button className="tf-btn-icon" title="Edit" onClick={() => bukaEdit(r)}>✏️</button>
                       <button className="tf-btn-icon tf-btn-icon-del" title="Hapus" onClick={() => hapus(r.id)}>🗑</button>
                     </td>
                   </tr>
@@ -398,9 +440,19 @@ export default function SetoranView({ user }: { user: User }) {
         <Modal onClose={() => setEditing(null)}>
           <h3>Edit Setoran</h3>
           <p className="tf-empty">{editing.jenis} — {String(editing.tanggal).substring(0, 10)}</p>
+          {JENIS_PAKAI_ASPEK.includes(editing.jenis) && (
+            <div className="tf-field">
+              <label>Penilaian (4 aspek)</label>
+              <AspekPicker skor={editSkor} bobot={bobot} onChange={(k, v) => setEditSkor({ ...editSkor, [k]: v })} />
+              <div className="tf-empty" style={{ textAlign: 'left', fontSize: 11.5 }}>
+                Jika keempat aspek dipilih, nilai dihitung otomatis. Kosongkan untuk mengubah nilai manual di bawah (data lama).
+              </div>
+            </div>
+          )}
           <div className="tf-field">
             <label>Nilai (0-100)</label>
-            <input type="number" min={0} max={100} value={editing.nilai ?? ''} onChange={(e) => setEditing({ ...editing, nilai: e.target.value })} />
+            <input type="number" min={0} max={100} value={editing.nilai ?? ''} disabled={JENIS_PAKAI_ASPEK.includes(editing.jenis) && hitungNilaiAspek(editSkor, bobot) !== null}
+              onChange={(e) => setEditing({ ...editing, nilai: e.target.value })} />
           </div>
           <div className="tf-field">
             <label>Catatan</label>

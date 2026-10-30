@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react';
 import { useHalaqah, halaqahLabel } from '../HalaqahSelect';
 import { api } from '@/lib/api-client';
+import { ASPEK_LIST } from '@/lib/helpers';
 import type { User } from '../AppShell';
 
 function todayStr() { return new Date().toISOString().substring(0, 10); }
@@ -104,6 +105,42 @@ export default function ProgressView({ user }: { user: User }) {
                 <div className="tf-stat-card c-red"><div className="label">RATA-RATA NILAI</div><div className="value">{data.rata_nilai}</div></div>
                 <div className="tf-stat-card c-green"><div className="label">TREN NILAI</div><div className="value" style={{ fontSize: 16 }}>{trenBadge}</div></div>
               </div>
+
+              {data.poin_prestasi && (
+                <>
+                  <h3 style={{ color: 'var(--heading)', fontSize: 15, marginTop: 18 }}>🏅 Poin Prestasi Hafalan</h3>
+                  <div className="tf-stats">
+                    <div className="tf-stat-card c-gold"><div className="label">TOTAL POIN</div><div className="value">{data.poin_prestasi.poin_total}</div></div>
+                    <div className="tf-stat-card c-green"><div className="label">HALAMAN DIHAFAL</div><div className="value">{data.poin_prestasi.halaman_total}<span style={{ fontSize: 13 }}> / 604</span></div></div>
+                    <div className="tf-stat-card c-cyan"><div className="label">POIN PADA RENTANG INI</div><div className="value">+{data.poin_prestasi.poin_rentang}</div></div>
+                  </div>
+                  <div className="tf-bar-chart" style={{ marginTop: 8 }}>
+                    <div className="tf-bar-row">
+                      <span className="tf-bar-label">Mushaf</span>
+                      <div className="tf-bar-track"><div className="tf-bar-fill" style={{ width: `${data.poin_prestasi.persen_mushaf}%` }} /></div>
+                      <span className="tf-bar-value">{data.poin_prestasi.persen_mushaf}%</span>
+                    </div>
+                  </div>
+                  <p style={{ fontSize: 12, color: 'var(--text-muted)', margin: '6px 0 0' }}>
+                    {data.poin_prestasi.poin_per_halaman} poin per halaman mushaf yang seluruh ayatnya sudah dihafal · Hafalan berurutan: {data.poin_prestasi.berurutan_label}
+                  </p>
+                </>
+              )}
+
+              {data.rata_aspek && ASPEK_LIST.some((a) => data.rata_aspek[a.key] !== null) && (
+                <>
+                  <h3 style={{ color: 'var(--heading)', fontSize: 15, marginTop: 18 }}>Rata-rata per Aspek Penilaian</h3>
+                  <div className="tf-bar-chart">
+                    {ASPEK_LIST.map((a) => (
+                      <div className="tf-bar-row" key={a.key}>
+                        <span className="tf-bar-label">{a.label}</span>
+                        <div className="tf-bar-track"><div className="tf-bar-fill" style={{ width: `${data.rata_aspek[a.key] || 0}%` }} /></div>
+                        <span className="tf-bar-value">{data.rata_aspek[a.key] ?? '-'}</span>
+                      </div>
+                    ))}
+                  </div>
+                </>
+              )}
 
               <h3 style={{ color: 'var(--heading)', fontSize: 15, marginTop: 18 }}>Tren Rata-rata Nilai per Minggu</h3>
               <div className="tf-bar-chart">

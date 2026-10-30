@@ -20,5 +20,6 @@ export const MENU: { key: string; label: string; roles: Role[] }[] = [
   { key: 'progress', label: 'Progress Siswa', roles: ['admin', 'penyimak', 'santri', 'tamu'] },
   { key: 'rekap', label: 'Rekap & Rapor', roles: ['admin', 'penyimak', 'tamu'] },
   { key: 'mushaf', label: 'Mushaf Digital', roles: ['admin', 'penyimak', 'santri', 'tamu'] },
+  { key: 'pengaturan', label: 'Pengaturan Penilaian', roles: ['admin'] },
   { key: 'users', label: 'Pengguna', roles: ['admin'] },
 ];

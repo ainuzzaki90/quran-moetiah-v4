@@ -131,19 +131,18 @@ export function buildRaporHtml(
   const tabelRows = jenisAll.filter((j) => byJ[j].length).map((j) => {
     const rows = byJ[j], isUmmi = j === 'Setoran Metode Ummi';
     const aTajwid = avgF(rows, 'nilai_tajwid');
-    const aFashohah = avgF(rows, 'nilai_fashohah');
+    const aMakharij = avgF(rows, 'nilai_makharij') || avgF(rows, 'nilai_fashohah');
+    const aKetepatan = avgF(rows, 'nilai_ketepatan');
     const aKelancaran = avgF(rows, 'nilai_kelancaran');
-    const subAda = aTajwid > 0 || aFashohah > 0 || aKelancaran > 0;
-    const showT = isUmmi ? '—' : (aTajwid || avgN(rows));
-    const showF = isUmmi ? '—' : (aFashohah || avgN(rows));
-    const showK = isUmmi ? '—' : (aKelancaran || avgN(rows));
-    const av = isUmmi ? avgN(rows)
-      : (subAda ? Math.round((([aTajwid || avgN(rows), aFashohah || avgN(rows), aKelancaran || avgN(rows)].reduce((a, b) => a + b, 0)) / 3) * 10) / 10
-        : avgN(rows));
+    const showT = isUmmi || !aTajwid ? '—' : aTajwid;
+    const showF = isUmmi || !aMakharij ? '—' : aMakharij;
+    const showK = isUmmi || !aKelancaran ? '—' : aKelancaran;
+    const showE = isUmmi || !aKetepatan ? '—' : aKetepatan;
+    const av = avgN(rows); // nilai akhir tiap setoran sudah memuat bobot aspek
     return `<tr>
       <td><span class="tf-badge ${badgeCls[j]}">${j}</span></td>
       <td>${rows.length}</td><td>${av}</td><td>${predUmum(av)}</td>
-      <td>${showT}</td><td>${showF}</td><td>${showK}</td>
+      <td>${showF}</td><td>${showT}</td><td>${showK}</td><td>${showE}</td>
     </tr>`;
   }).join('');
 
@@ -207,9 +206,9 @@ export function buildRaporHtml(
         <thead><tr>
           <th style="text-align:left;">Jenis Setoran</th>
           <th>Jumlah</th><th>Rata-rata Nilai</th><th>Predikat</th>
-          <th>Tajwid</th><th>Fashohah</th><th>Kelancaran</th>
+          <th>Makharij</th><th>Tajwid</th><th>Kelancaran</th><th>Ketepatan</th>
         </tr></thead>
-        <tbody>${tabelRows || '<tr><td colspan="7" style="text-align:center;">Tidak ada data.</td></tr>'}</tbody>
+        <tbody>${tabelRows || '<tr><td colspan="8" style="text-align:center;">Tidak ada data.</td></tr>'}</tbody>
       </table>
 
       <div class="rp-sec" style="margin-top:10px;">Grafik Rata-rata Nilai per Jenis</div>

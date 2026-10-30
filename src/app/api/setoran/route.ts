@@ -3,7 +3,8 @@ import { requireAuth, SessionUser } from '@/lib/auth';
 import { getSupabaseAdmin } from '@/lib/supabase';
 import { getToken, jsonOk, withErrorHandling } from '@/lib/api-helpers';
 import { getSantriIdsForPenyimak, getKelasIdSantri } from '@/lib/relations';
-import { calcPredikat } from '@/lib/helpers';
+import { calcPredikat, hitungNilaiAspek, JENIS_PAKAI_ASPEK, Bobot } from '@/lib/helpers';
+import { getPengaturan } from '@/lib/pengaturan';
 import { parseHalaqahParam, getDefaultHalaqahId } from '@/lib/halaqah';
 import { enrichSetoranRows } from '@/lib/enrich';
 
@@ -34,7 +35,19 @@ export const GET = withErrorHandling(async (req: NextRequest) => {
   return jsonOk({ data: await enrichSetoranRows(list) });
 });
 
-function buildSetoranRow(session: SessionUser, tanggal: string, santriId: number, kelasId: number | null, halaqahId: any, item: any) {
+function buildSetoranRow(session: SessionUser, tanggal: string, santriId: number, kelasId: number | null, halaqahId: any, item: any, bobot: Bobot) {
+  // Hafalan Baru / Murojaah: nilai dihitung server dari 4 aspek (bobot dari Pengaturan)
+  let aspek: Record<string, any> = {};
+  if (JENIS_PAKAI_ASPEK.includes(item.jenis) && item.skor) {
+    const n = hitungNilaiAspek(item.skor, bobot);
+    if (n === null) throw new Error(`Nilai 4 aspek untuk "${item.jenis}" wajib diisi semua`);
+    aspek = {
+      nilai: n,
+      nilai_makharij: Number(item.skor.makharij), nilai_tajwid: Number(item.skor.tajwid),
+      nilai_kelancaran: Number(item.skor.kelancaran), nilai_ketepatan: Number(item.skor.ketepatan),
+    };
+    item = { ...item, nilai: n, predikat: '' };
+  }
   const predikat = item.predikat && item.predikat !== '' ? item.predikat : calcPredikat(item.nilai);
   return {
     tanggal,
@@ -54,6 +67,7 @@ function buildSetoranRow(session: SessionUser, tanggal: string, santriId: number
     nilai_tajwid: item.nilai_tajwid ?? null,
     nilai_fashohah: item.nilai_fashohah ?? null,
     nilai_kelancaran: item.nilai_kelancaran ?? null,
+    ...aspek,
     catatan: item.catatan || null,
   };
 }
@@ -72,20 +86,21 @@ export const POST = withErrorHandling(async (req: NextRequest) => {
   const kelasId = payload.kelas_id || (await getKelasIdSantri(payload.santri_id));
   const halaqahId = payload.halaqah_id || (await getDefaultHalaqahId());
   if (!halaqahId) throw new Error('Halaqah belum dipilih');
+  const { bobot } = await getPengaturan();
 
   if (Array.isArray(payload.items)) {
     const rows = payload.items.map((it: any) =>
       buildSetoranRow(session, payload.tanggal, payload.santri_id, kelasId, halaqahId, {
         ...it,
         catatan: it.catatan !== undefined && it.catatan !== '' ? it.catatan : (payload.catatan || ''),
-      })
+      }, bobot)
     );
     const { data, error } = await db.from('setoran').insert(rows).select();
     if (error) throw new Error(error.message);
     return jsonOk({ count: data.length });
   }
 
-  const row = buildSetoranRow(session, payload.tanggal, payload.santri_id, kelasId, halaqahId, payload);
+  const row = buildSetoranRow(session, payload.tanggal, payload.santri_id, kelasId, halaqahId, payload, bobot);
   const { data, error } = await db.from('setoran').insert(row).select().single();
   if (error) throw new Error(error.message);
   return jsonOk({ data });

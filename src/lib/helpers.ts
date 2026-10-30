@@ -141,3 +141,38 @@ export function getTahunAjaran(refDate?: Date) {
   if (bln >= 7) return { tahun_ajaran: `${thn}/${thn + 1}`, semester: 1 };
   return { tahun_ajaran: `${thn - 1}/${thn}`, semester: 2 };
 }
+
+
+// ============== INSTRUMEN PENILAIAN 4 ASPEK (Hafalan Baru & Murojaah) ==============
+export const SKOR_LEVELS = [
+  { skor: 20, label: 'Sangat kurang' },
+  { skor: 40, label: 'Kurang' },
+  { skor: 60, label: 'Cukup' },
+  { skor: 80, label: 'Baik' },
+  { skor: 100, label: 'Sangat baik' },
+];
+
+export const ASPEK_LIST = [
+  { key: 'makharij', label: 'Makharijul huruf', col: 'nilai_makharij' },
+  { key: 'tajwid', label: 'Tajwid', col: 'nilai_tajwid' },
+  { key: 'kelancaran', label: 'Kelancaran', col: 'nilai_kelancaran' },
+  { key: 'ketepatan', label: 'Ketepatan', col: 'nilai_ketepatan' },
+] as const;
+
+export type Bobot = { makharij: number; tajwid: number; kelancaran: number; ketepatan: number };
+export const DEFAULT_BOBOT: Bobot = { makharij: 15, tajwid: 25, kelancaran: 25, ketepatan: 35 };
+export const DEFAULT_POIN_PER_HALAMAN = 2;
+export const JENIS_PAKAI_ASPEK = ['Hafalan Baru', 'Murojaah'];
+
+/** Nilai akhir = jumlah (skor aspek x bobot%). Dibulatkan 1 desimal. */
+export function hitungNilaiAspek(skor: Partial<Record<keyof Bobot, number | string>>, bobot: Bobot): number | null {
+  let total = 0, sumBobot = 0;
+  for (const a of ASPEK_LIST) {
+    const v = Number(skor[a.key]);
+    if (!v || isNaN(v)) return null; // semua aspek wajib terisi
+    total += v * bobot[a.key];
+    sumBobot += bobot[a.key];
+  }
+  if (!sumBobot) return null;
+  return Math.round((total / sumBobot) * 10) / 10;
+}

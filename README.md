@@ -149,3 +149,6 @@ pengampu per halaqah di "Pengguna -> Siswa Binaan".
 
 ## Update: Urutan Hafalan di Statistik
 Jalankan `supabase/migration-hafalan-awal.sql` di Supabase SQL Editor sekali sebelum memakai versi ini.
+
+## Update: Penilaian 4 Aspek, Pengaturan Bobot, Poin Prestasi
+Jalankan `supabase/migration-penilaian-poin.sql` di Supabase SQL Editor sekali sebelum memakai versi ini.

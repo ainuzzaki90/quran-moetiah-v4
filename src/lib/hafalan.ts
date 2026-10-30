@@ -1,4 +1,9 @@
 import { SURAH_PAGES } from './surah-pages';
+import { PAGE_FIRST_AYAH_ID } from './mushaf-pages';
+
+// Offset nomor ayat global per surat (ayat global = offset + nomor ayat)
+const OFFSET: Record<number, number> = {};
+(() => { let off = 0; SURAH_PAGES.forEach((s) => { OFFSET[s[0]] = off; off += s[3]; }); })();
 
 /** Nilai minimal setoran Hafalan Baru agar surat dihitung hafal. */
 export const MIN_NILAI_HAFAL = 75;
@@ -73,7 +78,23 @@ export function computeHafalan(rows: Row[], awalSurahNos: number[] = []) {
   const terakhirNo = berurutan ? 114 - berurutan + 1 : 0;
   const terakhirNama = terakhirNo ? SURAH_PAGES[terakhirNo - 1][1] : '';
 
+  // Halaman mushaf yang seluruh ayatnya sudah dihafal (poin prestasi dihitung dari sini)
+  const hafalAyat = new Uint8Array(6237);
+  for (let no = 1; no <= 114; no++) {
+    if (hafal.has(no)) for (let a = 1; a <= AYAT[no]; a++) hafalAyat[OFFSET[no] + a] = 1;
+    else if (covered[no]) covered[no].forEach((a) => { hafalAyat[OFFSET[no] + a] = 1; });
+  }
+  let halamanHafal = 0;
+  for (let p = 0; p < 604; p++) {
+    const from = PAGE_FIRST_AYAH_ID[p];
+    const to = p + 1 < 604 ? PAGE_FIRST_AYAH_ID[p + 1] - 1 : 6236;
+    let penuh = true;
+    for (let i = from; i <= to; i++) if (!hafalAyat[i]) { penuh = false; break; }
+    if (penuh) halamanHafal++;
+  }
+
   return {
+    halaman_hafal: halamanHafal,
     surat_hafal: hafal.size,
     total_ayat: totalAyat,
     berurutan,

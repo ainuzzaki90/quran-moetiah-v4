@@ -16,6 +16,7 @@ import StatistikView from './views/Statistik';
 import ProgressView from './views/Progress';
 import RekapView from './views/Rekap';
 import MushafView from './views/Mushaf';
+import PengaturanView from './views/Pengaturan';
 import UsersView from './views/Users';
 
 export type User = { id: number; nama: string; role: Role; kelas_id: number | null };
@@ -95,6 +96,7 @@ export default function AppShell() {
           {view === 'progress' && <ProgressView user={user} />}
           {view === 'rekap' && <RekapView user={user} />}
           {view === 'mushaf' && <MushafView />}
+          {view === 'pengaturan' && <PengaturanView />}
           {view === 'users' && <UsersView />}
         </div>
         <footer className="tf-footer">© {new Date().getFullYear()} SMP Islam Moetiah — dikembangkan oleh Abdal Ainuz Zaki, B.A.</footer>
