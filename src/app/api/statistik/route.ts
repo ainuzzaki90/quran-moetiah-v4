@@ -2,6 +2,7 @@ import { NextRequest } from 'next/server';
 import { requireAuth } from '@/lib/auth';
 import { getSupabaseAdmin } from '@/lib/supabase';
 import { getToken, jsonOk, withErrorHandling } from '@/lib/api-helpers';
+import { fetchAll, SETORAN_HAFALAN_COLS } from '@/lib/db-utils';
 import { getSantriIdsForPenyimak } from '@/lib/relations';
 import { parseHalaqahParam } from '@/lib/halaqah';
 import { computeHafalan } from '@/lib/hafalan';
@@ -16,14 +17,20 @@ export const GET = withErrorHandling(async (req: NextRequest) => {
   const { start, end } = computeDateRange(params);
 
   const hq = parseHalaqahParam(params.halaqah_id);
-  const { data: setoranAllRaw } = await db.from('setoran').select('*');
+  // Semua query dijalankan paralel; kolom setoran dipersempit (lebih cepat & hemat memori)
+  const [setoranAllRaw, santriRes, kelasRes, awalRes, pengaturan] = await Promise.all([
+    fetchAll(() => db.from('setoran').select(SETORAN_HAFALAN_COLS).order('id')),
+    db.from('santri').select('id, nama, kelas_id, level_ummi, user_id'),
+    db.from('kelas').select('id, nama_kelas'),
+    db.from('hafalan_awal').select('santri_id, surah_no'),
+    getPengaturan(),
+  ]);
   const setoranAllTime = (setoranAllRaw || []).filter((s) => !hq || String(s.halaqah_id) === hq);
   let setoran = (setoranAllTime || []).filter((s) => {
     const d = new Date(s.tanggal);
     return d >= start && d <= end;
   });
-  const { data: santriAll } = await db.from('santri').select('*');
-  let santriScope = santriAll || [];
+  let santriScope = santriRes.data || [];
 
   if (session.role === 'penyimak') {
     const binaanIds = await getSantriIdsForPenyimak(session.user_id);
@@ -54,29 +61,35 @@ export const GET = withErrorHandling(async (req: NextRequest) => {
     if (s.predikat) perPredikat[s.predikat] = (perPredikat[s.predikat] || 0) + 1;
   });
 
-  const { data: kelasAll } = await db.from('kelas').select('*');
-  const { poin_per_halaman } = await getPengaturan();
-  const { data: awalAll } = await db.from('hafalan_awal').select('santri_id, surah_no');
+  const kelasAll = kelasRes.data;
+  const { poin_per_halaman } = pengaturan;
+  const awalAll = awalRes.data;
   const awalMap: Record<string, number[]> = {};
   (awalAll || []).forEach((a) => { (awalMap[String(a.santri_id)] = awalMap[String(a.santri_id)] || []).push(a.surah_no); });
+  // Kelompokkan baris per siswa sekali saja (menghindari saring ulang seluruh tabel untuk tiap siswa)
+  const groupBy = (arr: any[]) => {
+    const m: Record<string, any[]> = {};
+    arr.forEach((r) => { (m[String(r.santri_id)] = m[String(r.santri_id)] || []).push(r); });
+    return m;
+  };
+  const periodBySantri = groupBy(setoran);
+  const allBySantri = groupBy(setoranAllRaw || []);
   const peringkat = santriScope
     .map((santri) => {
-      const rows = setoran.filter((s) => String(s.santri_id) === String(santri.id));
+      const rows = periodBySantri[String(santri.id)] || [];
       const nilaiArrS = rows.map((r) => Number(r.nilai)).filter((n) => !isNaN(n));
       const rataS = nilaiArrS.length ? nilaiArrS.reduce((a, b) => a + b, 0) / nilaiArrS.length : 0;
       const kelas = (kelasAll || []).find((k) => String(k.id) === String(santri.kelas_id));
       // Capaian terakhir dibagi lintas halaqah
-      const rowsAllTime = (setoranAllRaw || []).filter((s) => String(s.santri_id) === String(santri.id));
+      const rowsAllTime = allBySantri[String(santri.id)] || [];
       const capaian = computeCapaianTerakhir(rowsAllTime as any);
       // Hafalan bersifat kumulatif: semua periode & semua halaqah
-      const hafalan = computeHafalan(
-        (setoranAllRaw || []).filter((s) => String(s.santri_id) === String(santri.id)) as any,
-        awalMap[String(santri.id)] || []
-      );
+      const hafalan = computeHafalan(rowsAllTime as any, awalMap[String(santri.id)] || []);
       return {
         santri_id: santri.id,
         surat_berurutan: hafalan.berurutan,
         surat_berurutan_label: hafalan.berurutan_label,
+        hafalan_tertinggi_label: hafalan.hafalan_tertinggi_label,
         surat_hafal: hafalan.surat_hafal,
         total_ayat_hafal: hafalan.total_ayat,
         halaman_hafal: hafalan.halaman_hafal,

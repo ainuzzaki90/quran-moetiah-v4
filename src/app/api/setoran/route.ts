@@ -12,25 +12,28 @@ import { enrichSetoranRows } from '@/lib/enrich';
 export const GET = withErrorHandling(async (req: NextRequest) => {
   const session = await requireAuth(getToken(req));
   const db = getSupabaseAdmin();
-  let query = db.from('setoran').select('*').order('tanggal', { ascending: false });
+  let query = db.from('setoran').select('*').order('tanggal', { ascending: false }).order('id', { ascending: false });
 
   if (session.role === 'santri') {
     const { data: me } = await db.from('santri').select('id').eq('user_id', session.user_id).maybeSingle();
     query = query.eq('santri_id', me ? me.id : -1);
+  }
+  if (session.role === 'penyimak') {
+    // Filter binaan langsung di database (bukan di JS)
+    const binaanIds = (await getSantriIdsForPenyimak(session.user_id)).map(Number);
+    if (!binaanIds.length) return jsonOk({ data: [] });
+    query = query.in('santri_id', binaanIds);
   }
   const santriIdParam = req.nextUrl.searchParams.get('santri_id');
   if (santriIdParam) query = query.eq('santri_id', santriIdParam);
   const hq = parseHalaqahParam(req.nextUrl.searchParams.get('halaqah_id'));
   if (hq) query = query.eq('halaqah_id', hq);
 
-  let { data, error } = await query;
+  // limit: hanya ambil N baris terbaru (dipakai halaman Setoran: 20 baris)
+  const limit = Number(req.nextUrl.searchParams.get('limit')) || 0;
+  const { data, error } = await query.limit(limit > 0 ? Math.min(limit, 500) : 5000);
   if (error) throw new Error(error.message);
-  let list = data || [];
-
-  if (session.role === 'penyimak') {
-    const binaanIds = await getSantriIdsForPenyimak(session.user_id);
-    list = list.filter((s) => binaanIds.includes(String(s.santri_id)));
-  }
+  const list: any[] = data || [];
 
   return jsonOk({ data: await enrichSetoranRows(list) });
 });

@@ -168,11 +168,11 @@ export default function StatistikView({ user }: { user: User }) {
                         <th style={{ cursor: 'pointer' }} onClick={() => klikHeader('nama')}>Nama{arrow('nama')}</th>
                         <th style={{ cursor: 'pointer' }} onClick={() => klikHeader('kelas_nama')}>Kelas{arrow('kelas_nama')}</th>
                         <th>Level Ummi</th>
-                        <th style={{ cursor: 'pointer' }} onClick={() => klikHeader('urut_hafalan')}>Hafalan Berurutan (dari An-Nas){arrow('urut_hafalan')}</th>
+                        <th style={{ cursor: 'pointer' }} onClick={() => klikHeader('urut_hafalan')}>Hafalan Tertinggi{arrow('urut_hafalan')}</th>
                         <th style={{ cursor: 'pointer' }} onClick={() => klikHeader('total_poin')}>Poin Prestasi{arrow('total_poin')}</th>
                         <th style={{ cursor: 'pointer' }} onClick={() => klikHeader('surat_hafal')}>Surat Hafal{arrow('surat_hafal')}</th>
                         <th style={{ cursor: 'pointer' }} onClick={() => klikHeader('total_ayat_hafal')}>Total Ayat Hafal{arrow('total_ayat_hafal')}</th>
-                        <th>Halaman Terakhir</th><th>Surah Terakhir</th>
+                        <th>Halaman Terakhir</th>
                         <th style={{ cursor: 'pointer' }} onClick={() => klikHeader('total_setoran')}>Total Setoran{arrow('total_setoran')}</th>
                         <th style={{ cursor: 'pointer' }} onClick={() => klikHeader('rata_nilai')}>Rata-rata Nilai{arrow('rata_nilai')}</th>
                         {canEditAwal && <th>Hafalan Awal</th>}
@@ -185,12 +185,11 @@ export default function StatistikView({ user }: { user: User }) {
                           <td>{d.nama}</td>
                           <td>{d.kelas_nama}</td>
                           <td>{d.level_ummi}</td>
-                          <td style={{ fontWeight: sortBy === 'urut_hafalan' ? 700 : undefined }}>{d.surat_berurutan_label || '-'}</td>
+                          <td style={{ fontWeight: sortBy === 'urut_hafalan' ? 700 : undefined }}>{d.hafalan_tertinggi_label || '-'}</td>
                           <td style={{ textAlign: 'center', fontWeight: sortBy === 'total_poin' ? 700 : undefined }}>{d.total_poin} <span style={{ color: '#9ca3af', fontSize: 11 }}>({d.halaman_hafal} hlm)</span></td>
                           <td style={{ textAlign: 'center', fontWeight: sortBy === 'surat_hafal' ? 700 : undefined }}>{d.surat_hafal}</td>
                           <td style={{ textAlign: 'center', fontWeight: sortBy === 'total_ayat_hafal' ? 700 : undefined }}>{d.total_ayat_hafal}</td>
                           <td>{d.halaman_terakhir || '-'}</td>
-                          <td>{d.surah_terakhir || '-'}</td>
                           <td style={{ textAlign: 'center', fontWeight: sortBy === 'total_setoran' ? 700 : undefined }}>{d.total_setoran}</td>
                           <td style={{ textAlign: 'center', fontWeight: sortBy === 'rata_nilai' ? 700 : undefined }}>{d.rata_nilai}</td>
                           {canEditAwal && <td><button className="tf-btn-sm" onClick={() => bukaAwal(d)}>✏️ Atur</button></td>}

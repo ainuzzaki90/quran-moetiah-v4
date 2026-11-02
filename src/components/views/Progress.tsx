@@ -96,8 +96,8 @@ export default function ProgressView({ user }: { user: User }) {
                 📄 Halaman terakhir: <b>{data.halaman_terakhir ? data.halaman_terakhir.label : 'Belum ada'}</b>
                 {data.halaman_terakhir && <span style={{ color: 'var(--text-muted)' }}> ({String(data.halaman_terakhir.tanggal).substring(0, 10)})</span>}
                 <br />
-                📖 Surah terakhir: <b>{data.surah_terakhir ? data.surah_terakhir.label : 'Belum ada'}</b>
-                {data.surah_terakhir && <span style={{ color: 'var(--text-muted)' }}> ({String(data.surah_terakhir.tanggal).substring(0, 10)})</span>}
+                📖 Hafalan tertinggi: <b>{data.poin_prestasi?.hafalan_tertinggi_label || 'Belum ada'}</b>
+                {data.surah_terakhir && <span style={{ color: 'var(--text-muted)' }}> (setoran terakhir: {String(data.surah_terakhir.tanggal).substring(0, 10)})</span>}
               </div>
 
               <div className="tf-stats">

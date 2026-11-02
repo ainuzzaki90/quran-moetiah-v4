@@ -152,3 +152,7 @@ Jalankan `supabase/migration-hafalan-awal.sql` di Supabase SQL Editor sekali seb
 
 ## Update: Penilaian 4 Aspek, Pengaturan Bobot, Poin Prestasi
 Jalankan `supabase/migration-penilaian-poin.sql` di Supabase SQL Editor sekali sebelum memakai versi ini.
+
+## Update: Kecepatan
+File `vercel.json` mengatur server Vercel di region Singapura (sin1). Pastikan region project Supabase
+juga Singapore (Supabase -> Project Settings -> General). Jika berbeda, ubah "regions" di vercel.json.

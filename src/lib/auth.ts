@@ -61,18 +61,31 @@ export async function createSession(user: { id: number; role: string; kelas_id: 
   return data.token as string;
 }
 
+// Cache sesi singkat di memori server (mengurangi 1 query database per request).
+// Logout menghapus cache; masa berlaku cache hanya 30 detik.
+const SESSION_CACHE_MS = 30 * 1000;
+const sessionCache = new Map<string, { user: SessionUser; expires: number; cachedAt: number }>();
+
 export async function getSessionUser(token: string | null | undefined): Promise<SessionUser | null> {
   if (!token) return null;
+  const hit = sessionCache.get(token);
+  const now = Date.now();
+  if (hit && now - hit.cachedAt < SESSION_CACHE_MS && hit.expires > now) return hit.user;
+
   const db = getSupabaseAdmin();
   const { data } = await db.from('sessions').select('*').eq('token', token).maybeSingle();
-  if (!data) return null;
-  if (new Date(data.expires_at) < new Date()) return null;
-  return {
+  if (!data) { sessionCache.delete(token); return null; }
+  const expires = new Date(data.expires_at).getTime();
+  if (expires < now) { sessionCache.delete(token); return null; }
+  const user: SessionUser = {
     token: data.token,
     user_id: data.user_id,
     role: data.role,
     kelas_id: data.kelas_id,
   };
+  if (sessionCache.size > 500) sessionCache.clear();
+  sessionCache.set(token, { user, expires, cachedAt: now });
+  return user;
 }
 
 export class AuthError extends Error {}
@@ -124,6 +137,7 @@ export async function actionLogin(payload: { username?: string; password?: strin
 
 export async function actionLogout(token: string | null | undefined) {
   if (token) {
+    sessionCache.delete(token);
     const db = getSupabaseAdmin();
     await db.from('sessions').delete().eq('token', token);
   }

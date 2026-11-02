@@ -68,7 +68,7 @@ export default function SetoranView({ user }: { user: User }) {
     if (!halaqahId) return;
     Promise.all([
       api.get(`/santri?binaan_only=1&with_posisi=1&halaqah_id=${halaqahId}`),
-      api.get(`/setoran?halaqah_id=${filterHalaqah}`),
+      api.get(`/setoran?halaqah_id=${filterHalaqah}&limit=20`),
     ])
       .then(([s, r]) => { setSantriList(s.data); setRiwayat(r.data.slice(0, 20)); })
       .catch((e) => setError(e.message))

@@ -20,7 +20,8 @@ export const GET = withErrorHandling(async (req: NextRequest) => {
   if (params.get('tanggal_mulai')) query = query.gte('tanggal', params.get('tanggal_mulai')!);
   if (params.get('tanggal_akhir')) query = query.lte('tanggal', params.get('tanggal_akhir')!);
 
-  const { data, error } = await query;
+  const limit = Number(params.get('limit')) || 0;
+  const { data, error } = await query.limit(limit > 0 ? Math.min(limit, 500) : 5000);
   if (error) throw new Error(error.message);
   return jsonOk({ data });
 });

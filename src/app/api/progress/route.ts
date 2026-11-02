@@ -26,9 +26,19 @@ export const GET = withErrorHandling(async (req: NextRequest) => {
     throw new Error('santri_id wajib diisi');
   }
 
-  const { data: santri } = await db.from('santri').select('*').eq('id', santriId).maybeSingle();
+  // Semua data siswa diambil sekali, paralel (sebelumnya 7 query berurutan)
+  const [santriRes, kelasRes, setoranSemuaRes, presensiRes, awalRes, pengaturan] = await Promise.all([
+    db.from('santri').select('*').eq('id', santriId).maybeSingle(),
+    db.from('kelas').select('id, nama_kelas'),
+    db.from('setoran').select('*').eq('santri_id', santriId).limit(5000),
+    db.from('presensi').select('tanggal, status, halaqah_id').eq('santri_id', santriId).limit(5000),
+    db.from('hafalan_awal').select('surah_no').eq('santri_id', santriId),
+    getPengaturan(),
+  ]);
+  const santri = santriRes.data;
   if (!santri) throw new Error('Data santri tidak ditemukan');
-  const { data: kelas } = await db.from('kelas').select('nama_kelas').eq('id', santri.kelas_id).maybeSingle();
+  const kelas = (kelasRes.data || []).find((k) => String(k.id) === String(santri.kelas_id)) || null;
+  const setoranSemua = setoranSemuaRes.data || [];
 
   const end = params.get('tanggal_akhir') ? new Date(params.get('tanggal_akhir') + 'T23:59:59') : new Date();
   const start = params.get('tanggal_mulai')
@@ -36,9 +46,7 @@ export const GET = withErrorHandling(async (req: NextRequest) => {
     : new Date(end.getTime() - 90 * 24 * 60 * 60 * 1000);
 
   const hq = parseHalaqahParam(params.get('halaqah_id'));
-  let setoranQ = db.from('setoran').select('*').eq('santri_id', santriId);
-  if (hq) setoranQ = setoranQ.eq('halaqah_id', hq);
-  const { data: setoranSantri } = await setoranQ;
+  const setoranSantri = setoranSemua.filter((s) => !hq || String(s.halaqah_id) === hq);
   const setoran = (setoranSantri || [])
     .filter((s) => { const d = new Date(s.tanggal); return d >= start && d <= end; })
     .sort((a, b) => new Date(a.tanggal).getTime() - new Date(b.tanggal).getTime());
@@ -78,9 +86,7 @@ export const GET = withErrorHandling(async (req: NextRequest) => {
     rataPerMinggu[k] = Math.round((perMinggu[k].total / perMinggu[k].count) * 100) / 100;
   });
 
-  let presQ = db.from('presensi').select('*').eq('santri_id', santriId);
-  if (hq) presQ = presQ.eq('halaqah_id', hq);
-  const { data: presensiSantri } = await presQ;
+  const presensiSantri = (presensiRes.data || []).filter((p) => !hq || String(p.halaqah_id) === hq);
   const presensi = (presensiSantri || []).filter((p) => { const d = new Date(p.tanggal); return d >= start && d <= end; });
 
   const hadirCount = { hadir: 0, izin: 0, sakit: 0, alfa: 0 };
@@ -96,12 +102,10 @@ export const GET = withErrorHandling(async (req: NextRequest) => {
 
 
   // ---- Poin prestasi hafalan (kumulatif, semua halaqah) ----
-  const { poin_per_halaman } = await getPengaturan();
-  const { data: setoranSemua } = await db.from('setoran').select('*').eq('santri_id', santriId);
+  const { poin_per_halaman } = pengaturan;
   // Halaman/surah terakhir dibagi lintas halaqah
   const capaian = computeCapaianTerakhir((setoranSemua || []) as any);
-  const { data: awalRows } = await db.from('hafalan_awal').select('surah_no').eq('santri_id', santriId);
-  const awal = (awalRows || []).map((a) => a.surah_no);
+  const awal = (awalRes.data || []).map((a) => a.surah_no);
   const hafalSampaiAkhir = computeHafalan((setoranSemua || []).filter((s) => new Date(s.tanggal) <= end) as any, awal);
   const hafalSebelumMulai = computeHafalan((setoranSemua || []).filter((s) => new Date(s.tanggal) < start) as any, awal);
   const bulatkan = (n: number) => Math.round(n * 100) / 100;
@@ -113,6 +117,7 @@ export const GET = withErrorHandling(async (req: NextRequest) => {
     poin_rentang: bulatkan(Math.max(0, hafalSampaiAkhir.halaman_hafal - hafalSebelumMulai.halaman_hafal) * poin_per_halaman),
     persen_mushaf: bulatkan((hafalSampaiAkhir.halaman_hafal / 604) * 100),
     berurutan_label: hafalSampaiAkhir.berurutan_label,
+    hafalan_tertinggi_label: hafalSampaiAkhir.hafalan_tertinggi_label,
     surat_hafal: hafalSampaiAkhir.surat_hafal,
   };
 

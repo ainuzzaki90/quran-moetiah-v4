@@ -3,6 +3,7 @@ import { requireAuth } from '@/lib/auth';
 import { getSupabaseAdmin } from '@/lib/supabase';
 import { getToken, jsonOk, withErrorHandling } from '@/lib/api-helpers';
 import { parseHalaqahParam, getHalaqahMap } from '@/lib/halaqah';
+import { fetchAll } from '@/lib/db-utils';
 import { getSantriIdsForPenyimak } from '@/lib/relations';
 import { computeCapaianTerakhir, getTahunAjaran } from '@/lib/helpers';
 
@@ -19,22 +20,29 @@ export const GET = withErrorHandling(async (req: NextRequest) => {
   const periodLabel = bulanMulai === bulanAkhir ? bulanTunggal : `${bulanMulai}-${bulanAkhir}`;
 
   const hq = parseHalaqahParam(params.get('halaqah_id'));
-  const halaqahMap = await getHalaqahMap();
-  const { data: setoranAll } = await db.from('setoran').select('*');
-  let setoran = (setoranAll || []).filter((s) => {
-    const d = new Date(s.tanggal);
-    const m = d.getMonth() + 1;
-    return d.getFullYear() === tahun && m >= bulanMulai && m <= bulanAkhir;
-  });
 
+  // Filter periode langsung di database + semua query paralel
+  const pad = (n: number) => String(n).padStart(2, '0');
+  const tglMulai = `${tahun}-${pad(bulanMulai)}-01`;
+  const tglAkhir = `${tahun}-${pad(bulanAkhir)}-${pad(new Date(tahun, bulanAkhir, 0).getDate())}`;
+
+  const [halaqahMap, setoranPeriode, presensiAll, santriRes, kelasRes, usersRes, psRes] = await Promise.all([
+    getHalaqahMap(),
+    fetchAll(() => db.from('setoran').select('*').gte('tanggal', tglMulai).lte('tanggal', tglAkhir).order('id')),
+    fetchAll(() => db.from('presensi').select('santri_id, tanggal, status, halaqah_id').gte('tanggal', tglMulai).lte('tanggal', tglAkhir).order('id')),
+    db.from('santri').select('*'),
+    db.from('kelas').select('*'),
+    db.from('users').select('id, nama'),
+    db.from('penyimak_santri').select('*'),
+  ]);
+
+  let setoran = setoranPeriode;
   const setoranSemuaHalaqah = setoran;
   if (hq) setoran = setoran.filter((s) => String(s.halaqah_id) === hq);
-  const { data: presensiAll } = await db.from('presensi').select('santri_id, tanggal, status, halaqah_id');
-  const { data: santriAll } = await db.from('santri').select('*');
-  let santriList = santriAll || [];
-  const { data: kelasAll } = await db.from('kelas').select('*');
-  const { data: usersAll } = await db.from('users').select('id, nama');
-  const { data: penyimakSantriAll } = await db.from('penyimak_santri').select('*');
+  let santriList = santriRes.data || [];
+  const kelasAll = kelasRes.data;
+  const usersAll = usersRes.data;
+  const penyimakSantriAll = psRes.data;
 
   if (session.role === 'penyimak') {
     const binaanIds = await getSantriIdsForPenyimak(session.user_id);
@@ -48,9 +56,16 @@ export const GET = withErrorHandling(async (req: NextRequest) => {
   if (params.get('kelas_id')) santriList = santriList.filter((s) => String(s.kelas_id) === String(params.get('kelas_id')));
   if (params.get('santri_id')) santriList = santriList.filter((s) => String(s.id) === String(params.get('santri_id')));
 
+  const groupBy = (arr: any[]) => {
+    const m: Record<string, any[]> = {};
+    arr.forEach((r) => { (m[String(r.santri_id)] = m[String(r.santri_id)] || []).push(r); });
+    return m;
+  };
+  const setoranBySantri = groupBy(setoran);
+  const semuaBySantri = groupBy(setoranSemuaHalaqah);
+
   const hasil = santriList.map((santri) => {
-    const rows = setoran
-      .filter((s) => String(s.santri_id) === String(santri.id))
+    const rows = (setoranBySantri[String(santri.id)] || [])
       .sort((a, b) => new Date(a.tanggal).getTime() - new Date(b.tanggal).getTime());
     const nilaiArr = rows.map((r) => Number(r.nilai)).filter((n) => !isNaN(n));
     const rata = nilaiArr.length ? nilaiArr.reduce((a, b) => a + b, 0) / nilaiArr.length : 0;
@@ -77,16 +92,14 @@ export const GET = withErrorHandling(async (req: NextRequest) => {
 
     // Halaman/surah terakhir dibagi lintas halaqah (Pagi & Malam)
     const capaian = computeCapaianTerakhir(
-      setoranSemuaHalaqah.filter((s) => String(s.santri_id) === String(santri.id)) as any
+      (semuaBySantri[String(santri.id)] || []) as any
     );
 
     // Ringkasan per halaqah (Pagi / Malam dst) -- dicatat terpisah, tidak dicampur ke rata-rata utama
     const ringkasanHalaqah = Object.values(halaqahMap)
       .sort((a: any, b: any) => a.urutan - b.urutan)
       .map((h: any) => {
-        const rh = setoranSemuaHalaqah.filter(
-          (s) => String(s.santri_id) === String(santri.id) && String(s.halaqah_id) === String(h.id)
-        );
+        const rh = (semuaBySantri[String(santri.id)] || []).filter((s) => String(s.halaqah_id) === String(h.id));
         const na = rh.map((r) => Number(r.nilai)).filter((n) => !isNaN(n));
         const rataH = na.length ? na.reduce((a, b) => a + b, 0) / na.length : 0;
         const rel = (penyimakSantriAll || []).find(

@@ -40,7 +40,7 @@ export default function PresensiView({ user }: { user: User }) {
     if (!halaqahId) return;
     Promise.all([
       api.get(`/santri?binaan_only=1&halaqah_id=${halaqahId}`),
-      api.get(`/presensi?halaqah_id=${halaqahId}`),
+      api.get(`/presensi?halaqah_id=${halaqahId}&limit=60`),
     ])
       .then(([s, p]) => {
         setSantriList(s.data);

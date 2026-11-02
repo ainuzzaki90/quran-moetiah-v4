@@ -2,6 +2,7 @@ import { NextRequest } from 'next/server';
 import { requireAuth } from '@/lib/auth';
 import { getSupabaseAdmin } from '@/lib/supabase';
 import { parseHalaqahParam } from '@/lib/halaqah';
+import { fetchAll } from '@/lib/db-utils';
 import { getToken, jsonOk, withErrorHandling } from '@/lib/api-helpers';
 
 // GET /api/presensi/rekap?penyimak_id=&kelas_id=&tanggal_mulai=&tanggal_akhir=&show_all=1
@@ -10,7 +11,8 @@ export const GET = withErrorHandling(async (req: NextRequest) => {
   const db = getSupabaseAdmin();
   const params = req.nextUrl.searchParams;
 
-  let query = db.from('presensi').select('*');
+  const build = () => {
+  let query = db.from('presensi').select('santri_id, status').order('id');
   if (session.role === 'penyimak') query = query.eq('penyimak_id', session.user_id);
   if (params.get('penyimak_id')) query = query.eq('penyimak_id', params.get('penyimak_id'));
   const hq = parseHalaqahParam(params.get('halaqah_id'));
@@ -18,12 +20,16 @@ export const GET = withErrorHandling(async (req: NextRequest) => {
   if (params.get('kelas_id')) query = query.eq('kelas_id', params.get('kelas_id'));
   if (params.get('tanggal_mulai')) query = query.gte('tanggal', params.get('tanggal_mulai')!);
   if (params.get('tanggal_akhir')) query = query.lte('tanggal', params.get('tanggal_akhir')!);
+  return query;
+  };
 
-  const { data: presensi, error } = await query;
-  if (error) throw new Error(error.message);
-
-  const { data: santriList } = await db.from('santri').select('id, nama, nis, kelas_id, level_ummi');
-  const { data: kelasList } = await db.from('kelas').select('id, nama_kelas');
+  const [presensi, santriRes, kelasRes] = await Promise.all([
+    fetchAll(build),
+    db.from('santri').select('id, nama, nis, kelas_id, level_ummi'),
+    db.from('kelas').select('id, nama_kelas'),
+  ]);
+  const santriList = santriRes.data;
+  const kelasList = kelasRes.data;
   const kelasMap: Record<string, string> = {};
   (kelasList || []).forEach((k) => { kelasMap[String(k.id)] = k.nama_kelas; });
 

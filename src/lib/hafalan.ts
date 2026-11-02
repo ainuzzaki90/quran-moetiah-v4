@@ -93,7 +93,16 @@ export function computeHafalan(rows: Row[], awalSurahNos: number[] = []) {
     if (penuh) halamanHafal++;
   }
 
+  // Surat yang sedang berjalan: surat berikutnya setelah rangkaian berurutan, bila sudah sebagian disetor
+  let lanjut = '';
+  const nextNo = 114 - berurutan;
+  if (nextNo >= 1 && !hafal.has(nextNo) && covered[nextNo] && covered[nextNo].size > 0) {
+    lanjut = `lanjut: ${SURAH_PAGES[nextNo - 1][1]} ayat ${Math.max(...Array.from(covered[nextNo]))}`;
+  }
+  const tertinggiLabel = [berurutan ? `An-Nas → ${terakhirNama} (${berurutan} surat)` : '', lanjut].filter(Boolean).join(' · ') || '-';
+
   return {
+    hafalan_tertinggi_label: tertinggiLabel,
     halaman_hafal: halamanHafal,
     surat_hafal: hafal.size,
     total_ayat: totalAyat,
