@@ -141,6 +141,38 @@ export default function SantriView({ user }: { user: User }) {
     XLSX.writeFile(wb, 'Template-Data-Siswa.xlsx');
   }
 
+  // Unduh data siswa TERBARU dari web. 5 kolom pertama sama dengan template, sehingga file ini
+  // bisa diedit lalu diupload lagi dengan mode "Perbarui data yang ada". Kolom info lain diabaikan saat upload.
+  function downloadDataSiswa() {
+    const rows = sorted.map((s: any) => {
+      const r: Record<string, any> = {
+        Nama: s.nama,
+        NIS: s.nis ? String(s.nis) : '',
+        Kelas: s.kelas_nama === '(belum ada kelas)' ? '' : s.kelas_nama,
+        'Jenis Kelamin': s.jenis_kelamin || '',
+        'Level Ummi': s.level_ummi || '',
+        'Halaman Terakhir': s.halaman_terakhir || '',
+        'Surah Terakhir': s.surah_terakhir || '',
+      };
+      halaqahList.forEach((h) => { r[`Guru ${h.nama}`] = s[`guru_h_${h.id}`] || ''; });
+      if (isAdmin) r['Akun Login'] = s.user_id ? usernameOf(s.user_id) : '';
+      return r;
+    });
+    const ws = XLSX.utils.json_to_sheet(rows);
+    ws['!cols'] = [{ wch: 30 }, { wch: 20 }, { wch: 10 }, { wch: 14 }, { wch: 12 }, { wch: 16 }, { wch: 24 }];
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, 'Data Siswa');
+    const ket = [
+      ['Data siswa per ' + new Date().toLocaleString('id-ID')],
+      ['Untuk memperbarui data: ubah kolom Nama, NIS, Kelas, Jenis Kelamin, Level Ummi saja, lalu upload dengan mode "Perbarui data yang ada".'],
+      ['Kolom Halaman/Surah Terakhir, Guru Halaqah, dan Akun Login hanya informasi dan diabaikan saat upload.'],
+      ['Jangan mengubah nama kolom pada baris pertama.'],
+    ];
+    XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(ket), 'Petunjuk');
+    XLSX.writeFile(wb, `Data-Siswa-${new Date().toISOString().slice(0, 10)}.xlsx`);
+    showToast(`${rows.length} siswa diunduh`);
+  }
+
   function uploadSiswa(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -275,6 +307,7 @@ export default function SantriView({ user }: { user: User }) {
         <div className="tf-panel-head" style={{ display: 'flex', gap: 8, flexWrap: 'wrap', justifyContent: 'space-between' }}>
           <span>Daftar Siswa</span>
           <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+            <button className="tf-btn-sm" onClick={downloadDataSiswa}>⬇ Download Data Siswa</button>
             <button className="tf-btn-sm" onClick={downloadTemplateSiswa}>⬇ Download Template</button>
             {isAdmin && (
               <button className="tf-btn-sm" onClick={() => { setAkunHasil(null); setAkunModal(true); }}>🔑 Buat Akun Semua Siswa</button>
