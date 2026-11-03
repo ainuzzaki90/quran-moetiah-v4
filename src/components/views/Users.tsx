@@ -26,6 +26,12 @@ export default function UsersView() {
   const [binaanFor, setBinaanFor] = useState<number | null>(null);
   const [binaanChecked, setBinaanChecked] = useState<Set<number>>(new Set());
   const [binaanSearch, setBinaanSearch] = useState('');
+  const [binaanFilter, setBinaanFilter] = useState<'semua' | 'belum' | 'sudah'>('semua');
+  // siswa_id -> daftar id guru, untuk halaqah yang sedang dipilih di panel binaan
+  const [assignMap, setAssignMap] = useState<Record<number, number[]>>({});
+  // pemantauan: per halaqah daftar siswa yang belum punya guru
+  const [cekOpen, setCekOpen] = useState(false);
+  const [cekData, setCekData] = useState<Record<string, Record<number, number[]>>>({});
 
   function load() {
     setLoading(true);
@@ -90,8 +96,14 @@ export default function UsersView() {
   async function muatBinaan(userId: number, halaqahId: string) {
     setError('');
     try {
-      const res = await api.get(`/penyimak-santri?penyimak_id=${userId}&halaqah_id=${halaqahId}`);
-      setBinaanChecked(new Set((res.data || []).map((r: any) => Number(r.santri_id))));
+      const res = await api.get(`/penyimak-santri?halaqah_id=${halaqahId}`);
+      const map: Record<number, number[]> = {};
+      for (const r of res.data || []) {
+        const sid = Number(r.santri_id);
+        (map[sid] = map[sid] || []).push(Number(r.penyimak_id));
+      }
+      setAssignMap(map);
+      setBinaanChecked(new Set(Object.keys(map).map(Number).filter((sid) => map[sid].includes(userId))));
     } catch (e: any) { setError(e.message); }
   }
 
@@ -100,6 +112,7 @@ export default function UsersView() {
     setBinaanHalaqah(hid);
     setBinaanFor(u.id);
     setBinaanSearch('');
+    setBinaanFilter('semua');
     await muatBinaan(u.id, hid);
   }
 
@@ -114,13 +127,44 @@ export default function UsersView() {
   async function simpanBinaan() {
     if (binaanFor === null) return;
     try {
-      await api.post('/penyimak-santri', { penyimak_id: binaanFor, halaqah_id: Number(binaanHalaqah), santri_ids: Array.from(binaanChecked) });
-      showToast('Data siswa binaan berhasil disimpan');
+      const res = await api.post('/penyimak-santri', { penyimak_id: binaanFor, halaqah_id: Number(binaanHalaqah), santri_ids: Array.from(binaanChecked) });
+      showToast(res?.dipindahkan ? `Tersimpan. ${res.dipindahkan} siswa dipindahkan dari guru lain.` : 'Data siswa binaan berhasil disimpan');
       setBinaanFor(null);
+      if (cekOpen) muatCek();
     } catch (e: any) { setError(e.message); }
   }
 
-  const binaanFilteredSantri = santriList.filter((s) => s.nama.toLowerCase().includes(binaanSearch.toLowerCase()));
+  function namaGuru(id: number) { return list.find((u) => u.id === id)?.nama || `#${id}`; }
+
+  // status tiap siswa pada halaqah yang dipilih: guru lain (bukan guru yang sedang diatur)
+  function guruLain(sid: number): number[] {
+    return (assignMap[sid] || []).filter((g) => g !== binaanFor);
+  }
+  const binaanFilteredSantri = santriList.filter((s) => {
+    if (!s.nama.toLowerCase().includes(binaanSearch.toLowerCase())) return false;
+    const adaGuru = (assignMap[s.id] || []).length > 0;
+    if (binaanFilter === 'belum') return !adaGuru;
+    if (binaanFilter === 'sudah') return adaGuru;
+    return true;
+  });
+  const jmlBelum = santriList.filter((s) => !(assignMap[s.id] || []).length).length;
+
+  async function muatCek() {
+    try {
+      const res = await api.get('/penyimak-santri');
+      const out: Record<string, Record<number, number[]>> = {};
+      for (const r of res.data || []) {
+        const h = String(r.halaqah_id);
+        out[h] = out[h] || {};
+        (out[h][Number(r.santri_id)] = out[h][Number(r.santri_id)] || []).push(Number(r.penyimak_id));
+      }
+      setCekData(out);
+    } catch (e: any) { setError(e.message); }
+  }
+  async function toggleCek() {
+    if (!cekOpen) await muatCek();
+    setCekOpen(!cekOpen);
+  }
 
   return (
     <div>
@@ -252,6 +296,39 @@ export default function UsersView() {
         </Modal>
       )}
 
+      <div className="tf-panel">
+        <div className="tf-panel-head">Cek Siswa Belum Punya Guru</div>
+        <div className="tf-panel-body">
+          <button className="tf-btn-sm" onClick={toggleCek}>{cekOpen ? 'Tutup' : '📋 Tampilkan ringkasan per halaqah'}</button>
+          {cekOpen && halaqahList.map((h) => {
+            const m = cekData[String(h.id)] || {};
+            const belum = santriList.filter((s) => !(m[s.id] || []).length);
+            const ganda = santriList.filter((s) => (m[s.id] || []).length > 1);
+            return (
+              <div key={h.id} style={{ marginTop: 12 }}>
+                <b>{h.nama}</b>: {santriList.length - belum.length} siswa sudah punya guru,{' '}
+                <b style={{ color: belum.length ? '#b45309' : 'inherit' }}>{belum.length} belum punya guru</b>
+                {ganda.length > 0 && <span style={{ color: '#b91c1c' }}> · {ganda.length} siswa punya lebih dari satu guru (rapikan lewat Siswa Binaan)</span>}
+                {belum.length > 0 && (
+                  <div style={{ maxHeight: 200, overflowY: 'auto', border: '1px solid var(--border)', borderRadius: 8, padding: '4px 10px', marginTop: 6 }}>
+                    {belum.map((s) => (
+                      <div key={s.id} style={{ padding: '4px 0', borderBottom: '1px solid var(--border)' }}>
+                        {s.nama} <span className="tf-empty">{namaKelas(s.kelas_id)}</span>
+                      </div>
+                    ))}
+                  </div>
+                )}
+                {ganda.length > 0 && (
+                  <div style={{ marginTop: 6 }}>
+                    {ganda.map((s) => <div key={s.id} className="tf-empty">{s.nama}: {(m[s.id] || []).map(namaGuru).join(' & ')}</div>)}
+                  </div>
+                )}
+              </div>
+            );
+          })}
+        </div>
+      </div>
+
       {binaanFor !== null && (
         <div className="tf-panel">
           <div className="tf-panel-head">
@@ -264,7 +341,13 @@ export default function UsersView() {
               onChange={(v) => { setBinaanHalaqah(v); if (binaanFor !== null) muatBinaan(binaanFor, v); }}
               label="Halaqah (binaan diatur terpisah per halaqah)"
             />
-            <p className="tf-empty" style={{ marginBottom: 8 }}>Pilih siswa yang diampu penyimak ini di halaqah di atas. Boleh lintas kelas & lintas level.</p>
+            <p className="tf-empty" style={{ marginBottom: 8 }}>Pilih siswa yang diampu penyimak ini di halaqah di atas. Boleh lintas kelas & lintas level. Satu siswa hanya punya <b>satu guru per halaqah</b>: siswa yang sudah diampu guru lain akan <b>dipindahkan</b> ke guru ini jika dicentang.</p>
+            <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', alignItems: 'center', marginBottom: 8 }}>
+              {([['semua', 'Semua'], ['belum', 'Belum punya guru'], ['sudah', 'Sudah punya guru']] as const).map(([k, l]) => (
+                <button key={k} className={binaanFilter === k ? 'tf-btn-sm tf-btn' : 'tf-btn-sm'} onClick={() => setBinaanFilter(k)}>{l}</button>
+              ))}
+              <span className="tf-empty">Dicentang: {binaanChecked.size} · Belum punya guru: <b>{jmlBelum}</b> dari {santriList.length}</span>
+            </div>
             <input
               placeholder="Cari nama siswa..."
               value={binaanSearch}
@@ -277,6 +360,12 @@ export default function UsersView() {
                   <label key={s.id} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '8px 4px', borderBottom: '1px solid var(--border)' }}>
                     <input type="checkbox" checked={binaanChecked.has(s.id)} onChange={() => toggleBinaan(s.id)} />
                     <span style={{ flex: 1 }}>{s.nama}</span>
+                    {(() => {
+                      const lain = guruLain(s.id);
+                      if (binaanChecked.has(s.id) && lain.length === 0) return <span style={{ color: '#15803d', fontSize: 12 }}>✅ diampu guru ini</span>;
+                      if (lain.length) return <span style={{ color: binaanChecked.has(s.id) ? '#b91c1c' : '#6b7280', fontSize: 12 }}>{binaanChecked.has(s.id) ? `⚠️ dipindah dari ${lain.map(namaGuru).join(' & ')}` : `diampu ${lain.map(namaGuru).join(' & ')}`}</span>;
+                      return <span style={{ color: '#b45309', fontSize: 12, fontWeight: 700 }}>🆕 belum punya guru</span>;
+                    })()}
                     <span className="tf-empty">{namaKelas(s.kelas_id)} · {s.level_ummi || '-'}</span>
                   </label>
                 ))

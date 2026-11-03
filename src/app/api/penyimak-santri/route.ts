@@ -3,6 +3,7 @@ import { requireAuth } from '@/lib/auth';
 import { getSupabaseAdmin } from '@/lib/supabase';
 import { parseHalaqahParam, getDefaultHalaqahId } from '@/lib/halaqah';
 import { getToken, jsonOk, withErrorHandling } from '@/lib/api-helpers';
+import { fetchAll } from '@/lib/db-utils';
 
 // GET /api/penyimak-santri?penyimak_id=  (admin bebas pilih; penyimak selalu lihat binaannya sendiri)
 export const GET = withErrorHandling(async (req: NextRequest) => {
@@ -12,11 +13,12 @@ export const GET = withErrorHandling(async (req: NextRequest) => {
   const halaqahParam = parseHalaqahParam(req.nextUrl.searchParams.get('halaqah_id'));
 
   if (session.role === 'admin') {
-    let query = db.from('penyimak_santri').select('*');
-    if (penyimakIdParam) query = query.eq('penyimak_id', penyimakIdParam);
-    if (halaqahParam) query = query.eq('halaqah_id', halaqahParam);
-    const { data, error } = await query;
-    if (error) throw new Error(error.message);
+    const data = await fetchAll(() => {
+      let query = db.from('penyimak_santri').select('*').order('id');
+      if (penyimakIdParam) query = query.eq('penyimak_id', penyimakIdParam);
+      if (halaqahParam) query = query.eq('halaqah_id', halaqahParam);
+      return query;
+    });
     return jsonOk({ data });
   }
   if (session.role === 'penyimak') {
@@ -43,11 +45,21 @@ export const POST = withErrorHandling(async (req: NextRequest) => {
 
   const db = getSupabaseAdmin();
   await db.from('penyimak_santri').delete().eq('penyimak_id', penyimakId).eq('halaqah_id', halaqahId);
+  // Satu siswa hanya boleh punya satu guru per halaqah: siswa yang dipilih dipindahkan dari guru lain.
+  let dipindahkan = 0;
+  if (santriIds.length) {
+    const { data: moved, error: mErr } = await db
+      .from('penyimak_santri').delete()
+      .eq('halaqah_id', halaqahId).in('santri_id', santriIds).neq('penyimak_id', penyimakId)
+      .select('santri_id');
+    if (mErr) throw new Error(mErr.message);
+    dipindahkan = (moved || []).length;
+  }
   if (santriIds.length) {
     const { error } = await db.from('penyimak_santri').insert(
       santriIds.map((sid) => ({ penyimak_id: penyimakId, santri_id: sid, halaqah_id: halaqahId }))
     );
     if (error) throw new Error(error.message);
   }
-  return jsonOk({ count: santriIds.length });
+  return jsonOk({ count: santriIds.length, dipindahkan });
 });
