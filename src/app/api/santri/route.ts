@@ -49,6 +49,16 @@ export const GET = withErrorHandling(async (req: NextRequest) => {
       const u = (usersAll || []).find((x) => String(x.id) === String(b.penyimak_id));
       if (u) guruMap[String(b.santri_id)] = u.nama;
     });
+    // Guru pengampu per halaqah (Pagi / Malam): { santriId: { halaqahId: 'Nama & Nama' } }
+    const namaUser: Record<string, string> = {};
+    (usersAll || []).forEach((u) => { namaUser[String(u.id)] = u.nama; });
+    const guruPerHalaqah: Record<string, Record<string, string[]>> = {};
+    (binaanRes.data || []).forEach((b) => {
+      const nm = namaUser[String(b.penyimak_id)];
+      if (!nm) return;
+      const sm = (guruPerHalaqah[String(b.santri_id)] = guruPerHalaqah[String(b.santri_id)] || {});
+      (sm[String(b.halaqah_id)] = sm[String(b.halaqah_id)] || []).push(nm);
+    });
     list = list.map((s) => {
       const rows = bySantri[String(s.id)] || [];
       const capaian = computeCapaianTerakhir(rows as any);
@@ -57,6 +67,8 @@ export const GET = withErrorHandling(async (req: NextRequest) => {
         halaman_terakhir: capaian.halaman ? capaian.halaman.label : '-',
         surah_terakhir: capaian.surah ? capaian.surah.label : '-',
         guru_pengampu: guruMap[String(s.id)] || '-',
+        jumlah_setoran: rows.length,
+        guru_halaqah: Object.fromEntries(Object.entries(guruPerHalaqah[String(s.id)] || {}).map(([h, arr]) => [h, arr.join(' & ')])),
       };
     });
   }
@@ -81,7 +93,7 @@ export const POST = withErrorHandling(async (req: NextRequest) => {
       kelas_id: payload.kelas_id || null,
       jenis_kelamin: payload.jenis_kelamin || null,
       tanggal_lahir: payload.tanggal_lahir || null,
-      user_id: payload.user_id || null,
+      user_id: session.role === 'admin' ? (payload.user_id || null) : null,
       level_ummi: payload.level_ummi || null,
     })
     .select()
