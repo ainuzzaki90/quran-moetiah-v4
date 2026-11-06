@@ -107,13 +107,11 @@ export const GET = withErrorHandling(async (req: NextRequest) => {
       const jilid = santri.filter((s) => LEVEL_JILID_UMMI.includes(String(s.level_ummi)));
       if (jilid.length) {
         const peng = await pengaturanP;
-        const [kes, pend] = await Promise.all([
-          hitungKesiapan(jilid, peng),
-          db.from('kenaikan_jilid').select('santri_id').eq('status', 'diajukan').in('santri_id', jilid.map((s) => s.id)),
-        ]);
-        if (pend.error) throw new Error(pend.error.message);
-        const menunggu = new Set((pend.data || []).map((p) => p.santri_id));
-        siapUjian = jilid.filter((s) => kes[String(s.id)]?.siap && !menunggu.has(s.id)).length;
+        const kes = await hitungKesiapan(jilid, peng);
+        // pastikan tabel kenaikan_jilid ada (fitur aktif); jika belum, kartu disembunyikan
+        const cek = await db.from('kenaikan_jilid').select('id').limit(1);
+        if (cek.error) throw new Error(cek.error.message);
+        siapUjian = jilid.filter((s) => kes[String(s.id)]?.siap).length;
       } else siapUjian = 0;
     } catch { siapUjian = null; } // tabel kenaikan_jilid belum dibuat -> kartu disembunyikan
   }

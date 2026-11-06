@@ -52,38 +52,42 @@ export const GET = withErrorHandling(async (req: NextRequest) => {
   const rows = siswa.map((s) => {
     const k = kesiapan[String(s.id)];
     const mine = riwayat.filter((r) => r.santri_id === s.id);
-    const pending = mine.find((r) => r.status === 'diajukan');
     const level = String(s.level_ummi);
     const gagal = mine.filter((r) => r.status === 'belum_lulus' && r.dari_jilid === level).length;
-    let status: 'belum' | 'siap' | 'diajukan' | 'manual' | 'khatam' = 'belum';
+    let status: 'belum' | 'siap' | 'manual' | 'khatam' = 'belum';
     if (level === "Al-Qur'an") status = 'khatam';
     else if (!LEVEL_JILID_UMMI.includes(level)) status = 'manual';
-    else if (pending) status = 'diajukan';
     else if (k?.siap) status = 'siap';
     return {
       id: s.id, nama: s.nama, nis: s.nis, kelas_nama: kelasNama[String(s.kelas_id)] || '-', level,
-      ke_jilid: levelBerikutnya(level), status, pengajuan_id: pending?.id || null, ujian_gagal: gagal,
+      ke_jilid: levelBerikutnya(level), status, ujian_gagal: gagal,
       ...(k || {}),
     };
   });
 
+  const sekarang = Date.now();
   const riwayatOut = riwayat.map((r) => ({
     ...r,
+    // admin selalu boleh; guru hanya untuk catatannya sendiri dalam 24 jam
+    bisa_batal: ['lulus', 'belum_lulus'].includes(r.status) && (
+      session.role === 'admin' ||
+      (session.role === 'penyimak' && r.disahkan_oleh === session.user_id && r.disahkan_pada && sekarang - new Date(r.disahkan_pada).getTime() < 24 * 3600 * 1000)
+    ),
     nama_siswa: siswaNama[String(r.santri_id)]?.nama || '-',
     kelas_nama: kelasNama[String(siswaNama[String(r.santri_id)]?.kelas_id)] || '-',
-    diajukan_oleh_nama: userNama[String(r.diajukan_oleh)] || '-',
-    disahkan_oleh_nama: userNama[String(r.disahkan_oleh)] || '',
+    dicatat_oleh_nama: userNama[String(r.disahkan_oleh || r.diajukan_oleh)] || '-',
   }));
 
   return jsonOk({
     pengaturan: { halaman_per_jilid: pengaturan.halaman_per_jilid, syarat_ujian: pengaturan.syarat_ujian },
     siswa: rows,
     riwayat: riwayatOut,
-    ringkas: { siap: rows.filter((r) => r.status === 'siap').length, diajukan: rows.filter((r) => r.status === 'diajukan').length },
+    ringkas: { siap: rows.filter((r) => r.status === 'siap').length },
   });
 });
 
-// POST { action: 'ajukan'|'hasil'|'catat'|'batal'|'batalkan_kenaikan', ... }
+// POST { action: 'catat' | 'batalkan_kenaikan', ... }
+// Guru pengampu (binaan di halaqah mana pun) mencatat hasil ujian siswanya langsung; admin boleh untuk siapa pun.
 export const POST = withErrorHandling(async (req: NextRequest) => {
   const session = await requireAuth(getToken(req));
   if (session.role !== 'admin' && session.role !== 'penyimak') throw new Error('Tidak diizinkan');
@@ -97,76 +101,37 @@ export const POST = withErrorHandling(async (req: NextRequest) => {
     if (!data) throw new Error('Siswa tidak ditemukan');
     return data;
   }
-  const cekHasil = (h: any) => { if (h !== 'lulus' && h !== 'belum_lulus') throw new Error('Hasil ujian harus Lulus atau Belum lulus'); };
-  const cekNilai = (v: any) => {
-    if (v === '' || v === null || v === undefined) return null;
-    const n = Number(v); if (isNaN(n) || n < 0 || n > 100) throw new Error('Nilai ujian harus 0-100'); return n;
-  };
-
-  if (p.action === 'ajukan') {
-    const s = await ambilSiswa(Number(p.santri_id));
-    if (!isAdmin) {
-      const ids = await getSantriIdsForPenyimak(session.user_id);
-      if (!ids.includes(String(s.id))) throw new Error('Siswa ini bukan binaan Anda');
-    }
-    const ke = levelBerikutnya(s.level_ummi);
-    if (!ke || !LEVEL_JILID_UMMI.includes(String(s.level_ummi))) throw new Error('Level siswa ini tidak memakai pengajuan otomatis. Admin dapat mencatat ujian langsung.');
-    if (!isAdmin) {
-      const k = (await hitungKesiapan([s], await getPengaturan()))[String(s.id)];
-      if (!k?.siap) throw new Error('Siswa belum memenuhi syarat siap ujian kenaikan jilid');
-    }
-    const { error } = await db.from('kenaikan_jilid').insert({ santri_id: s.id, dari_jilid: s.level_ummi, ke_jilid: ke, status: 'diajukan', diajukan_oleh: session.user_id });
-    if (error) {
-      if (error.code === '23505') throw new Error('Siswa ini sudah memiliki pengajuan yang menunggu ujian');
-      throw new Error(/relation|does not exist|schema cache/i.test(error.message) ? TABEL_HILANG : error.message);
-    }
-    return jsonOk();
-  }
-
-  if (p.action === 'batal') {
-    const { data: r } = await db.from('kenaikan_jilid').select('*').eq('id', p.id).maybeSingle();
-    if (!r || r.status !== 'diajukan') throw new Error('Pengajuan tidak ditemukan atau sudah diproses');
-    if (!isAdmin && r.diajukan_oleh !== session.user_id) throw new Error('Hanya pengaju atau admin yang bisa membatalkan');
-    const { error } = await db.from('kenaikan_jilid').update({ status: 'dibatalkan' }).eq('id', r.id);
-    if (error) throw new Error(error.message);
-    return jsonOk();
-  }
-
-  // ---- selanjutnya khusus admin ----
-  if (!isAdmin) throw new Error('Hanya admin yang bisa mengesahkan hasil ujian kenaikan jilid');
-
-  async function terapkan(r: { id?: number; santri_id: number; dari_jilid: string; ke_jilid: string }, hasil: string) {
-    if (hasil === 'lulus') {
-      const s = await ambilSiswa(r.santri_id);
-      if (s.level_ummi !== r.dari_jilid) throw new Error(`Level siswa sudah berubah menjadi ${s.level_ummi || '-'}. Batalkan pengajuan ini lalu buat ulang.`);
-    }
-  }
-  const detail = () => ({
-    tanggal_ujian: p.tanggal_ujian || nowIso.slice(0, 10), penguji: String(p.penguji || '').trim() || null,
-    nilai_ujian: cekNilai(p.nilai_ujian), catatan: String(p.catatan || '').trim() || null,
-    disahkan_oleh: session.user_id, disahkan_pada: nowIso,
-  });
-
-  if (p.action === 'hasil') {
-    cekHasil(p.hasil);
-    const { data: r } = await db.from('kenaikan_jilid').select('*').eq('id', p.id).maybeSingle();
-    if (!r || r.status !== 'diajukan') throw new Error('Pengajuan tidak ditemukan atau sudah diproses');
-    await terapkan(r, p.hasil);
-    const { error } = await db.from('kenaikan_jilid').update({ status: p.hasil, ...detail() }).eq('id', r.id);
-    if (error) throw new Error(error.message);
-    if (p.hasil === 'lulus') await db.from('santri').update({ level_ummi: r.ke_jilid }).eq('id', r.santri_id);
-    return jsonOk({ level_baru: p.hasil === 'lulus' ? r.ke_jilid : null });
+  async function pastikanPengampu(santriId: number) {
+    if (isAdmin) return;
+    const ids = await getSantriIdsForPenyimak(session.user_id);
+    if (!ids.includes(String(santriId))) throw new Error('Siswa ini bukan binaan Anda');
   }
 
   if (p.action === 'catat') {
-    cekHasil(p.hasil);
+    if (p.hasil !== 'lulus' && p.hasil !== 'belum_lulus') throw new Error('Hasil ujian harus Lulus atau Belum lulus');
+    let nilai: number | null = null;
+    if (p.nilai_ujian !== '' && p.nilai_ujian !== null && p.nilai_ujian !== undefined) {
+      nilai = Number(p.nilai_ujian);
+      if (isNaN(nilai) || nilai < 0 || nilai > 100) throw new Error('Nilai ujian harus 0-100');
+    }
     const s = await ambilSiswa(Number(p.santri_id));
+    await pastikanPengampu(s.id);
+    // cegah dobel-klik / dua guru mencatat bersamaan: level yang dilihat pengguna harus masih sama
+    if (p.dari_jilid && p.dari_jilid !== s.level_ummi) throw new Error(`Level siswa sudah berubah menjadi ${s.level_ummi || '-'}. Muat ulang halaman.`);
     const ke = levelBerikutnya(s.level_ummi);
     if (!ke) throw new Error('Siswa sudah di level terakhir');
-    // batalkan pengajuan yang masih menunggu agar tidak dobel
+    if (!isAdmin) {
+      if (!LEVEL_JILID_UMMI.includes(String(s.level_ummi))) throw new Error('Level siswa ini hanya bisa dicatat oleh admin');
+      const k = (await hitungKesiapan([s], await getPengaturan()))[String(s.id)];
+      if (!k?.siap) throw new Error('Siswa belum memenuhi syarat siap ujian kenaikan jilid');
+    }
+    // pengajuan lama (versi sebelumnya) yang masih menggantung ditutup
     await db.from('kenaikan_jilid').update({ status: 'dibatalkan' }).eq('santri_id', s.id).eq('status', 'diajukan');
     const { error } = await db.from('kenaikan_jilid').insert({
-      santri_id: s.id, dari_jilid: s.level_ummi, ke_jilid: ke, status: p.hasil, diajukan_oleh: session.user_id, ...detail(),
+      santri_id: s.id, dari_jilid: s.level_ummi, ke_jilid: ke, status: p.hasil, diajukan_oleh: session.user_id,
+      tanggal_ujian: p.tanggal_ujian || nowIso.slice(0, 10), penguji: String(p.penguji || '').trim() || null,
+      nilai_ujian: nilai, catatan: String(p.catatan || '').trim() || null,
+      disahkan_oleh: session.user_id, disahkan_pada: nowIso,
     });
     if (error) throw new Error(/relation|does not exist|schema cache/i.test(error.message) ? TABEL_HILANG : error.message);
     if (p.hasil === 'lulus') await db.from('santri').update({ level_ummi: ke }).eq('id', s.id);
@@ -175,12 +140,20 @@ export const POST = withErrorHandling(async (req: NextRequest) => {
 
   if (p.action === 'batalkan_kenaikan') {
     const { data: r } = await db.from('kenaikan_jilid').select('*').eq('id', p.id).maybeSingle();
-    if (!r || r.status !== 'lulus') throw new Error('Hanya kenaikan yang berstatus Lulus yang bisa dibatalkan');
+    if (!r || !['lulus', 'belum_lulus'].includes(r.status)) throw new Error('Catatan tidak ditemukan atau sudah dibatalkan');
+    if (!isAdmin) {
+      if (r.disahkan_oleh !== session.user_id) throw new Error('Guru hanya bisa membatalkan catatannya sendiri');
+      if (!r.disahkan_pada || Date.now() - new Date(r.disahkan_pada).getTime() >= 24 * 3600 * 1000) throw new Error('Batas 24 jam untuk membatalkan sudah lewat. Hubungi admin.');
+    }
     const s = await ambilSiswa(r.santri_id);
     const { error } = await db.from('kenaikan_jilid').update({ status: 'dibatalkan' }).eq('id', r.id);
     if (error) throw new Error(error.message);
-    if (s.level_ummi === r.ke_jilid) await db.from('santri').update({ level_ummi: r.dari_jilid }).eq('id', r.santri_id);
-    return jsonOk({ level_dikembalikan: s.level_ummi === r.ke_jilid });
+    let dikembalikan = false;
+    if (r.status === 'lulus' && s.level_ummi === r.ke_jilid) {
+      await db.from('santri').update({ level_ummi: r.dari_jilid }).eq('id', r.santri_id);
+      dikembalikan = true;
+    }
+    return jsonOk({ level_dikembalikan: dikembalikan });
   }
 
   throw new Error('Aksi tidak dikenal');

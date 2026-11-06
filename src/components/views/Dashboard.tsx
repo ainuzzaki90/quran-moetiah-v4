@@ -163,7 +163,7 @@ function StatistikSections({ st, role, prestasi, loading }: { st: any; role: str
           <div className="tf-mini">
             <div className="label">Siap ujian kenaikan jilid</div>
             <div className="value">{k.siap_ujian}</div>
-            <div className="sub">siswa (belum diajukan)</div>
+            <div className="sub">siswa, belum dicatat ujiannya</div>
           </div>
         )}
         {k.belum_guru && (
