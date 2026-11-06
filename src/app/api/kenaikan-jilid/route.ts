@@ -2,7 +2,7 @@ import { NextRequest } from 'next/server';
 import { requireAuth } from '@/lib/auth';
 import { getSupabaseAdmin } from '@/lib/supabase';
 import { getToken, jsonOk, withErrorHandling } from '@/lib/api-helpers';
-import { getSantriIdsForPenyimak } from '@/lib/relations';
+import { fetchAll } from '@/lib/db-utils';
 import { getPengaturan } from '@/lib/pengaturan';
 import { hitungKesiapan } from '@/lib/ummi';
 import { LEVEL_JILID_UMMI, LEVEL_UMMI_OPTIONS, levelBerikutnya } from '@/lib/helpers';
@@ -12,13 +12,9 @@ const TABEL_HILANG = 'Tabel kenaikan_jilid belum ada. Jalankan supabase/migratio
 async function cakupanSiswa(session: any) {
   const db = getSupabaseAdmin();
   let q = db.from('santri').select('id, nama, nis, kelas_id, level_ummi, user_id').order('nama');
-  if (session.role === 'penyimak') {
-    const ids = (await getSantriIdsForPenyimak(session.user_id)).map(Number);
-    if (!ids.length) return [];
-    q = q.in('id', ids);
-  } else if (session.role === 'santri') {
+  if (session.role === 'santri') {
     q = q.eq('user_id', session.user_id);
-  } else if (session.role !== 'admin') {
+  } else if (session.role !== 'admin' && session.role !== 'penyimak') {
     throw new Error('Tidak diizinkan');
   }
   const { data, error } = await q;
@@ -30,10 +26,13 @@ async function cakupanSiswa(session: any) {
 export const GET = withErrorHandling(async (req: NextRequest) => {
   const session = await requireAuth(getToken(req));
   const db = getSupabaseAdmin();
-  const [siswaAll, pengaturan, kelasRes, usersRes] = await Promise.all([
+  const [siswaAll, pengaturan, kelasRes, usersRes, halaqahRes, binaanRows] = await Promise.all([
     cakupanSiswa(session), getPengaturan(),
     db.from('kelas').select('id, nama_kelas'), db.from('users').select('id, nama'),
+    db.from('halaqah').select('id, nama, urutan').eq('aktif', true).order('urutan'),
+    session.role === 'santri' ? Promise.resolve([] as any[]) : fetchAll<any>(() => db.from('penyimak_santri').select('id, penyimak_id, santri_id, halaqah_id').order('id')),
   ]);
+  const halaqahList = (halaqahRes.data || []).map((h: any) => ({ id: h.id, nama: h.nama }));
   const siswa = siswaAll.filter((s) => LEVEL_UMMI_OPTIONS.includes(String(s.level_ummi)));
   const ids = siswa.map((s) => s.id);
 
@@ -49,6 +48,15 @@ export const GET = withErrorHandling(async (req: NextRequest) => {
   const userNama: Record<string, string> = {}; (usersRes.data || []).forEach((u) => { userNama[String(u.id)] = u.nama; });
   const siswaNama: Record<string, any> = {}; siswa.forEach((s) => { siswaNama[String(s.id)] = s; });
 
+  // guru pengampu per halaqah + penanda binaan guru yang sedang login
+  const guruMap: Record<string, Record<string, string[]>> = {};
+  const binaanSaya = new Set<number>();
+  binaanRows.forEach((b: any) => {
+    const sid = String(b.santri_id);
+    ((guruMap[sid] = guruMap[sid] || {})[String(b.halaqah_id)] = guruMap[sid][String(b.halaqah_id)] || []).push(userNama[String(b.penyimak_id)] || '-');
+    if (session.role === 'penyimak' && b.penyimak_id === session.user_id) binaanSaya.add(Number(b.santri_id));
+  });
+
   const rows = siswa.map((s) => {
     const k = kesiapan[String(s.id)];
     const mine = riwayat.filter((r) => r.santri_id === s.id);
@@ -61,6 +69,8 @@ export const GET = withErrorHandling(async (req: NextRequest) => {
     return {
       id: s.id, nama: s.nama, nis: s.nis, kelas_nama: kelasNama[String(s.kelas_id)] || '-', level,
       ke_jilid: levelBerikutnya(level), status, ujian_gagal: gagal,
+      kelas_id: s.kelas_id, binaan_saya: binaanSaya.has(s.id),
+      guru_halaqah: Object.fromEntries(Object.entries(guruMap[String(s.id)] || {}).map(([h, g]) => [h, g.join(' & ')])),
       ...(k || {}),
     };
   });
@@ -81,13 +91,14 @@ export const GET = withErrorHandling(async (req: NextRequest) => {
   return jsonOk({
     pengaturan: { halaman_per_jilid: pengaturan.halaman_per_jilid, syarat_ujian: pengaturan.syarat_ujian },
     siswa: rows,
+    halaqah: halaqahList,
     riwayat: riwayatOut,
     ringkas: { siap: rows.filter((r) => r.status === 'siap').length },
   });
 });
 
 // POST { action: 'catat' | 'batalkan_kenaikan', ... }
-// Guru pengampu (binaan di halaqah mana pun) mencatat hasil ujian siswanya langsung; admin boleh untuk siapa pun.
+// Semua guru boleh menguji dan mencatat hasil ujian semua siswa yang siap; admin boleh untuk siapa pun (juga di luar syarat).
 export const POST = withErrorHandling(async (req: NextRequest) => {
   const session = await requireAuth(getToken(req));
   if (session.role !== 'admin' && session.role !== 'penyimak') throw new Error('Tidak diizinkan');
@@ -101,11 +112,6 @@ export const POST = withErrorHandling(async (req: NextRequest) => {
     if (!data) throw new Error('Siswa tidak ditemukan');
     return data;
   }
-  async function pastikanPengampu(santriId: number) {
-    if (isAdmin) return;
-    const ids = await getSantriIdsForPenyimak(session.user_id);
-    if (!ids.includes(String(santriId))) throw new Error('Siswa ini bukan binaan Anda');
-  }
 
   if (p.action === 'catat') {
     if (p.hasil !== 'lulus' && p.hasil !== 'belum_lulus') throw new Error('Hasil ujian harus Lulus atau Belum lulus');
@@ -115,7 +121,6 @@ export const POST = withErrorHandling(async (req: NextRequest) => {
       if (isNaN(nilai) || nilai < 0 || nilai > 100) throw new Error('Nilai ujian harus 0-100');
     }
     const s = await ambilSiswa(Number(p.santri_id));
-    await pastikanPengampu(s.id);
     // cegah dobel-klik / dua guru mencatat bersamaan: level yang dilihat pengguna harus masih sama
     if (p.dari_jilid && p.dari_jilid !== s.level_ummi) throw new Error(`Level siswa sudah berubah menjadi ${s.level_ummi || '-'}. Muat ulang halaman.`);
     const ke = levelBerikutnya(s.level_ummi);

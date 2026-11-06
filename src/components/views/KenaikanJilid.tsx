@@ -23,6 +23,9 @@ export default function KenaikanJilidView({ user }: { user: User }) {
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState<'semua' | 'siap' | 'belum'>('semua');
   const [search, setSearch] = useState('');
+  const [kelasF, setKelasF] = useState('semua');
+  const [levelF, setLevelF] = useState('semua');
+  const [hanyaBinaan, setHanyaBinaan] = useState(user.role === 'penyimak');
   const [modal, setModal] = useState<any | null>(null); // { siswa }
   const [form, setForm] = useState({ hasil: 'lulus', tanggal_ujian: '', penguji: '', nilai_ujian: '', catatan: '' });
   const [busy, setBusy] = useState(false);
@@ -35,9 +38,18 @@ export default function KenaikanJilidView({ user }: { user: User }) {
 
   const rows = (data?.siswa || []).filter((s: any) => {
     if (search && !s.nama.toLowerCase().includes(search.toLowerCase())) return false;
+    if (kelasF !== 'semua' && s.kelas_nama !== kelasF) return false;
+    if (levelF !== 'semua' && s.level !== levelF) return false;
+    if (user.role === 'penyimak' && hanyaBinaan && !s.binaan_saya) return false;
     if (filter === 'semua') return true;
     return s.status === filter;
-  }).map((s: any) => ({ ...s, halaman_txt: s.halaman_terakhir ?? '', status_txt: STATUS_LABEL[s.status]?.t || s.status }));
+  }).map((s: any) => {
+    const o: any = { ...s, halaman_txt: s.halaman_terakhir ?? '', status_txt: STATUS_LABEL[s.status]?.t || s.status };
+    (data?.halaqah || []).forEach((h: any) => { o[`guru_h_${h.id}`] = s.guru_halaqah?.[h.id] || ''; });
+    return o;
+  });
+  const daftarKelas: string[] = Array.from(new Set<string>((data?.siswa || []).map((s: any) => s.kelas_nama))).sort((a, b) => a.localeCompare(b, 'id', { numeric: true }));
+  const daftarLevel: string[] = Array.from(new Set<string>((data?.siswa || []).map((s: any) => s.level)));
   const { sorted, Th } = useSortable(rows);
 
   async function aksi(body: any, pesan: string) {
@@ -83,7 +95,7 @@ export default function KenaikanJilidView({ user }: { user: User }) {
             <div className="tf-panel-body">
               <p className="tf-empty" style={{ textAlign: 'left' }}>
                 Siswa <b>siap ujian</b> bila sudah mencapai halaman terakhir jilidnya (nilai ≥ {data.pengaturan.syarat_ujian.nilai_halaman_akhir}) dan rata-rata
-                {' '}{data.pengaturan.syarat_ujian.jumlah_setoran} setoran Ummi terakhir ≥ {data.pengaturan.syarat_ujian.rata_min}. <b>Guru pengampu mencatat hasil ujian</b> siswanya; bila lulus, jilid siswa naik otomatis.
+                {' '}{data.pengaturan.syarat_ujian.jumlah_setoran} setoran Ummi terakhir ≥ {data.pengaturan.syarat_ujian.rata_min}. <b>Semua guru boleh menguji dan mencatat hasil ujian</b> siswa yang siap; bila lulus, jilid siswa naik otomatis.
                 {isAdmin && ' Syarat dan jumlah halaman tiap jilid diatur di menu Pengaturan Penilaian.'}
               </p>
               <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', alignItems: 'center', marginBottom: 8 }}>
@@ -91,6 +103,17 @@ export default function KenaikanJilidView({ user }: { user: User }) {
                   <button key={k} className={filter === k ? 'tf-btn-sm tf-btn' : 'tf-btn-sm'} onClick={() => setFilter(k)}>{l}</button>
                 ))}
                 <input placeholder="Cari nama siswa..." value={search} onChange={(e) => setSearch(e.target.value)} style={{ padding: 6, border: '1px solid var(--border)', borderRadius: 8 }} />
+                <select value={kelasF} onChange={(e) => setKelasF(e.target.value)} style={{ padding: 6, border: '1px solid var(--border)', borderRadius: 8 }}>
+                  <option value="semua">Semua kelas</option>{daftarKelas.map((k) => <option key={k} value={k}>{k}</option>)}
+                </select>
+                <select value={levelF} onChange={(e) => setLevelF(e.target.value)} style={{ padding: 6, border: '1px solid var(--border)', borderRadius: 8 }}>
+                  <option value="semua">Semua level</option>{daftarLevel.map((l) => <option key={l} value={l}>{l}</option>)}
+                </select>
+                {user.role === 'penyimak' && (
+                  <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 13 }}>
+                    <input type="checkbox" checked={hanyaBinaan} onChange={(e) => setHanyaBinaan(e.target.checked)} /> Hanya binaan saya
+                  </label>
+                )}
               </div>
               {sorted.length === 0 ? <div className="tf-empty">Tidak ada siswa yang cocok.</div> : (
                 <div style={{ overflowX: 'auto' }}>
@@ -98,7 +121,7 @@ export default function KenaikanJilidView({ user }: { user: User }) {
                     <thead>
                       <tr>
                         <th>#</th><Th sortk="nama" label="Nama" /><Th sortk="kelas_nama" label="Kelas" /><Th sortk="level" label="Level" />
-                        <Th sortk="halaman_txt" label="Halaman" /><Th sortk="rata_nilai" label="Rata-rata" /><th>Syarat</th><Th sortk="status_txt" label="Status" />
+                        {(data.halaqah || []).map((h: any) => <Th key={h.id} sortk={`guru_h_${h.id}`} label={`Guru ${h.nama}`} />)}<Th sortk="halaman_txt" label="Halaman" /><Th sortk="rata_nilai" label="Rata-rata" /><th>Syarat</th><Th sortk="status_txt" label="Status" />
                         {canAjukan && <th>Aksi</th>}
                       </tr>
                     </thead>
@@ -109,6 +132,7 @@ export default function KenaikanJilidView({ user }: { user: User }) {
                           <tr key={s.id}>
                             <td>{i + 1}</td>
                             <td>{s.nama}</td><td>{s.kelas_nama}</td><td>{s.level}</td>
+                            {(data.halaqah || []).map((h: any) => <td key={h.id} style={{ fontSize: 12.5 }}>{s.guru_halaqah?.[h.id] || '-'}</td>)}
                             <td>{s.halaman_akhir_jilid ? `${s.halaman_terakhir ?? '-'} / ${s.halaman_akhir_jilid}` : '-'}</td>
                             <td>{s.rata_nilai ?? '-'}</td>
                             <td style={{ fontSize: 12 }}>{s.halaman_akhir_jilid ? <>{s.syarat_halaman ? '✓' : '✗'} halaman · {s.syarat_nilai ? '✓' : '✗'} nilai</> : '-'}</td>
