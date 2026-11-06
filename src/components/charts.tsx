@@ -37,12 +37,15 @@ export function BarRows({ rows, max, unit = '', color = 'var(--navy-light)' }: {
   return (
     <div>
       {rows.map((r, i) => (
-        <div key={i} style={{ display: 'grid', gridTemplateColumns: 'minmax(90px, 32%) 1fr auto', alignItems: 'center', gap: 8, margin: '7px 0' }}>
-          <span style={{ fontSize: 13 }}>{r.label}</span>
+        <div key={i} style={{ display: 'grid', gridTemplateColumns: 'minmax(96px, 34%) minmax(60px, 1fr) auto', alignItems: 'center', gap: 10, margin: '9px 0' }}>
+          <div style={{ minWidth: 0 }}>
+            <div style={{ fontSize: 13, overflowWrap: 'anywhere' }}>{r.label}</div>
+            {r.note && <div className="tf-muted">{r.note}</div>}
+          </div>
           <div style={{ background: 'var(--surface-alt)', borderRadius: 6, height: 14, overflow: 'hidden' }}>
             <div style={{ width: `${Math.max(0, Math.min(100, ((r.value || 0) / m) * 100))}%`, height: '100%', background: r.color || color, borderRadius: 6, transition: 'width .3s' }} />
           </div>
-          <span style={{ fontSize: 13, fontWeight: 700, minWidth: 46, textAlign: 'right' }}>{r.value === null ? '-' : r.value}{r.value === null ? '' : unit}{r.note ? <span className="tf-empty" style={{ fontWeight: 400 }}> {r.note}</span> : null}</span>
+          <div style={{ fontSize: 13, fontWeight: 700, minWidth: 38, textAlign: 'right', whiteSpace: 'nowrap' }}>{r.value === null ? '-' : `${r.value}${unit}`}</div>
         </div>
       ))}
     </div>

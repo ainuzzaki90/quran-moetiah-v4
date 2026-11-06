@@ -179,7 +179,7 @@ function StatistikSections({ st, role, prestasi, loading }: { st: any; role: str
             <div style={{ marginTop: 6 }}>
               {k.hadir_hari_ini.map((h: any) => (
                 <div key={h.halaqah_id} style={{ fontSize: 13, margin: '3px 0' }}>
-                  <b>{h.nama}</b>: {h.total ? <>{h.hadir} hadir dari {h.total}{h.alfa + h.sakit + h.izin > 0 && <span className="tf-empty"> ({h.izin} izin, {h.sakit} sakit, {h.alfa} alfa)</span>}</> : <span className="tf-empty">belum ada presensi</span>}
+                  <b>{h.nama}</b>: {h.total ? <>{h.hadir} hadir dari {h.total}{h.alfa + h.sakit + h.izin > 0 && <div className="tf-muted">{h.izin} izin, {h.sakit} sakit, {h.alfa} alfa</div>}</> : <span className="tf-muted">belum ada presensi</span>}
                 </div>
               ))}
             </div>
@@ -199,7 +199,7 @@ function StatistikSections({ st, role, prestasi, loading }: { st: any; role: str
           <div className="tf-panel-body">
             {totalPredikat === 0 ? <div className="tf-empty">Belum ada nilai pada periode ini.</div> : (
               <BarRows
-                rows={st.predikat.map((p: any) => ({ label: p.predikat, value: p.jumlah, color: PREDIKAT_WARNA[p.predikat], note: `(${Math.round((p.jumlah / totalPredikat) * 100)}%)` }))}
+                rows={st.predikat.map((p: any) => ({ label: p.predikat, value: p.jumlah, color: PREDIKAT_WARNA[p.predikat], note: `${Math.round((p.jumlah / totalPredikat) * 100)}% dari seluruh nilai` }))}
               />
             )}
           </div>
@@ -226,7 +226,7 @@ function StatistikSections({ st, role, prestasi, loading }: { st: any; role: str
           <div className="tf-panel-head">Setoran per Kelas — {periodeLabel}</div>
           <div className="tf-panel-body">
             {st.per_kelas.length === 0 ? <div className="tf-empty">Belum ada setoran pada periode ini.</div> : (
-              <BarRows rows={st.per_kelas.map((c: any) => ({ label: c.kelas, value: c.jumlah, note: `· ${c.siswa_setor} siswa · rata ${c.rata ?? '-'}` }))} />
+              <BarRows rows={st.per_kelas.map((c: any) => ({ label: c.kelas, value: c.jumlah, note: `${c.siswa_setor} siswa setor · rata-rata ${c.rata ?? '-'}` }))} />
             )}
           </div>
         </div>

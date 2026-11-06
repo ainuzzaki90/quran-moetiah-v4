@@ -111,7 +111,7 @@ export default function KenaikanJilidView({ user }: { user: User }) {
                             <td style={{ fontSize: 12 }}>{s.halaman_akhir_jilid ? <>{s.syarat_halaman ? '✓' : '✗'} halaman · {s.syarat_nilai ? '✓' : '✗'} nilai</> : '-'}</td>
                             <td>
                               <span className="tf-badge" style={{ background: st.bg, color: st.fg }}>{st.t}</span>
-                              {s.ujian_gagal > 0 && <div className="tf-empty" style={{ fontSize: 11 }}>belum lulus {s.ujian_gagal}×</div>}
+                              {s.ujian_gagal > 0 && <div className="tf-muted">belum lulus {s.ujian_gagal}×</div>}
                             </td>
                             {canAjukan && (
                               <td style={{ whiteSpace: 'nowrap' }}>

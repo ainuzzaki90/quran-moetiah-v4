@@ -313,14 +313,14 @@ export default function UsersView() {
                   <div style={{ maxHeight: 200, overflowY: 'auto', border: '1px solid var(--border)', borderRadius: 8, padding: '4px 10px', marginTop: 6 }}>
                     {belum.map((s) => (
                       <div key={s.id} style={{ padding: '4px 0', borderBottom: '1px solid var(--border)' }}>
-                        {s.nama} <span className="tf-empty">{namaKelas(s.kelas_id)}</span>
+                        {s.nama} <span className="tf-muted">{namaKelas(s.kelas_id)}</span>
                       </div>
                     ))}
                   </div>
                 )}
                 {ganda.length > 0 && (
                   <div style={{ marginTop: 6 }}>
-                    {ganda.map((s) => <div key={s.id} className="tf-empty">{s.nama}: {(m[s.id] || []).map(namaGuru).join(' & ')}</div>)}
+                    {ganda.map((s) => <div key={s.id} className="tf-muted">{s.nama}: {(m[s.id] || []).map(namaGuru).join(' & ')}</div>)}
                   </div>
                 )}
               </div>
@@ -346,7 +346,7 @@ export default function UsersView() {
               {([['semua', 'Semua'], ['belum', 'Belum punya guru'], ['sudah', 'Sudah punya guru']] as const).map(([k, l]) => (
                 <button key={k} className={binaanFilter === k ? 'tf-btn-sm tf-btn' : 'tf-btn-sm'} onClick={() => setBinaanFilter(k)}>{l}</button>
               ))}
-              <span className="tf-empty">Dicentang: {binaanChecked.size} · Belum punya guru: <b>{jmlBelum}</b> dari {santriList.length}</span>
+              <span className="tf-muted">Dicentang: {binaanChecked.size} · Belum punya guru: <b>{jmlBelum}</b> dari {santriList.length}</span>
             </div>
             <input
               placeholder="Cari nama siswa..."
@@ -366,7 +366,7 @@ export default function UsersView() {
                       if (lain.length) return <span style={{ color: binaanChecked.has(s.id) ? '#b91c1c' : '#6b7280', fontSize: 12 }}>{binaanChecked.has(s.id) ? `⚠️ dipindah dari ${lain.map(namaGuru).join(' & ')}` : `diampu ${lain.map(namaGuru).join(' & ')}`}</span>;
                       return <span style={{ color: '#b45309', fontSize: 12, fontWeight: 700 }}>🆕 belum punya guru</span>;
                     })()}
-                    <span className="tf-empty">{namaKelas(s.kelas_id)} · {s.level_ummi || '-'}</span>
+                    <span className="tf-muted">{namaKelas(s.kelas_id)} · {s.level_ummi || '-'}</span>
                   </label>
                 ))
               )}
