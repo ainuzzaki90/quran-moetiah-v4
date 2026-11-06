@@ -6,6 +6,7 @@ import { parseHalaqahParam, getHalaqahMap } from '@/lib/halaqah';
 import { fetchAll } from '@/lib/db-utils';
 import { getSantriIdsForPenyimak } from '@/lib/relations';
 import { computeCapaianTerakhir, getTahunAjaran } from '@/lib/helpers';
+import { getKenaikanTerakhir, filterSetoranSejakNaik } from '@/lib/ummi';
 
 // GET /api/rekap?tahun=&bulan=&bulan_mulai=&bulan_akhir=&kelas_id=&santri_id=
 export const GET = withErrorHandling(async (req: NextRequest) => {
@@ -63,6 +64,7 @@ export const GET = withErrorHandling(async (req: NextRequest) => {
   };
   const setoranBySantri = groupBy(setoran);
   const semuaBySantri = groupBy(setoranSemuaHalaqah);
+  const naikMap = await getKenaikanTerakhir();
 
   const hasil = santriList.map((santri) => {
     const rows = (setoranBySantri[String(santri.id)] || [])
@@ -92,7 +94,7 @@ export const GET = withErrorHandling(async (req: NextRequest) => {
 
     // Halaman/surah terakhir dibagi lintas halaqah (Pagi & Malam)
     const capaian = computeCapaianTerakhir(
-      (semuaBySantri[String(santri.id)] || []) as any
+      filterSetoranSejakNaik((semuaBySantri[String(santri.id)] || []) as any[], naikMap[String(santri.id)]) as any
     );
 
     // Ringkasan per halaqah (Pagi / Malam dst) -- dicatat terpisah, tidak dicampur ke rata-rata utama

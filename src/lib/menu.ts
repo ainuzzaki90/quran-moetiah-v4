@@ -18,6 +18,7 @@ export const MENU: { key: string; label: string; roles: Role[] }[] = [
   { key: 'halaqah', label: 'Data Halaqah', roles: ['admin'] },
   { key: 'statistik', label: 'Statistik', roles: ['admin', 'penyimak', 'santri', 'tamu'] },
   { key: 'progress', label: 'Progress Siswa', roles: ['admin', 'penyimak', 'santri', 'tamu'] },
+  { key: 'kenaikan', label: 'Kenaikan Jilid Ummi', roles: ['admin', 'penyimak', 'santri'] },
   { key: 'rekap', label: 'Rekap & Rapor', roles: ['admin', 'penyimak', 'tamu'] },
   { key: 'mushaf', label: 'Mushaf Digital', roles: ['admin', 'penyimak', 'santri', 'tamu'] },
   { key: 'pengaturan', label: 'Pengaturan Penilaian', roles: ['admin'] },

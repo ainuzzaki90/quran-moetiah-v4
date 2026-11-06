@@ -8,6 +8,7 @@ import { parseHalaqahParam } from '@/lib/halaqah';
 import { computeHafalan } from '@/lib/hafalan';
 import { getPengaturan } from '@/lib/pengaturan';
 import { computeDateRange, computeCapaianTerakhir } from '@/lib/helpers';
+import { getKenaikanTerakhir, filterSetoranSejakNaik } from '@/lib/ummi';
 
 // GET /api/statistik?periode=harian|pekanan|bulanan|tentatif&tanggal_referensi=&tanggal_mulai=&tanggal_selesai=&santri_id=&kelas_id=
 export const GET = withErrorHandling(async (req: NextRequest) => {
@@ -18,12 +19,13 @@ export const GET = withErrorHandling(async (req: NextRequest) => {
 
   const hq = parseHalaqahParam(params.halaqah_id);
   // Semua query dijalankan paralel; kolom setoran dipersempit (lebih cepat & hemat memori)
-  const [setoranAllRaw, santriRes, kelasRes, awalRes, pengaturan] = await Promise.all([
+  const [setoranAllRaw, santriRes, kelasRes, awalRes, pengaturan, naikMap] = await Promise.all([
     fetchAll(() => db.from('setoran').select(SETORAN_HAFALAN_COLS).order('id')),
     db.from('santri').select('id, nama, kelas_id, level_ummi, user_id'),
     db.from('kelas').select('id, nama_kelas'),
     db.from('hafalan_awal').select('santri_id, surah_no'),
     getPengaturan(),
+    getKenaikanTerakhir(),
   ]);
   const setoranAllTime = (setoranAllRaw || []).filter((s) => !hq || String(s.halaqah_id) === hq);
   let setoran = (setoranAllTime || []).filter((s) => {
@@ -82,7 +84,7 @@ export const GET = withErrorHandling(async (req: NextRequest) => {
       const kelas = (kelasAll || []).find((k) => String(k.id) === String(santri.kelas_id));
       // Capaian terakhir dibagi lintas halaqah
       const rowsAllTime = allBySantri[String(santri.id)] || [];
-      const capaian = computeCapaianTerakhir(rowsAllTime as any);
+      const capaian = computeCapaianTerakhir(filterSetoranSejakNaik(rowsAllTime as any[], naikMap[String(santri.id)]) as any);
       // Hafalan bersifat kumulatif: semua periode & semua halaqah
       const hafalan = computeHafalan(rowsAllTime as any, awalMap[String(santri.id)] || []);
       return {

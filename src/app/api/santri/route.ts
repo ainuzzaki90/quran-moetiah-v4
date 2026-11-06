@@ -6,6 +6,7 @@ import { parseHalaqahParam, getDefaultHalaqahId } from '@/lib/halaqah';
 import { fetchAll, SETORAN_HAFALAN_COLS } from '@/lib/db-utils';
 import { getSantriIdsForPenyimak } from '@/lib/relations';
 import { computeCapaianTerakhir } from '@/lib/helpers';
+import { getKenaikanTerakhir, filterSetoranSejakNaik } from '@/lib/ummi';
 
 // GET /api/santri?kelas_id=&binaan_only=1&with_posisi=1
 export const GET = withErrorHandling(async (req: NextRequest) => {
@@ -35,10 +36,11 @@ export const GET = withErrorHandling(async (req: NextRequest) => {
     const hq = parseHalaqahParam(params.get('halaqah_id'));
     // Posisi hafalan/halaman terakhir dibagi lintas halaqah (Pagi & Malam): semua setoran dihitung.
     // Hanya guru pengampu yang mengikuti halaqah terpilih. Query paralel, kolom dipersempit.
-    const [setoranAll, binaanRes, usersRes] = await Promise.all([
+    const [setoranAll, binaanRes, usersRes, naikMap] = await Promise.all([
       fetchAll(() => db.from('setoran').select(SETORAN_HAFALAN_COLS).order('id')),
       db.from('penyimak_santri').select('santri_id, penyimak_id, halaqah_id'),
       db.from('users').select('id, nama'),
+      getKenaikanTerakhir(),
     ]);
     const binaanAll = (binaanRes.data || []).filter((b) => !hq || String(b.halaqah_id) === hq);
     const usersAll = usersRes.data;
@@ -61,7 +63,7 @@ export const GET = withErrorHandling(async (req: NextRequest) => {
     });
     list = list.map((s) => {
       const rows = bySantri[String(s.id)] || [];
-      const capaian = computeCapaianTerakhir(rows as any);
+      const capaian = computeCapaianTerakhir(filterSetoranSejakNaik(rows as any[], naikMap[String(s.id)]) as any);
       return {
         ...s,
         halaman_terakhir: capaian.halaman ? capaian.halaman.label : '-',

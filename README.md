@@ -156,3 +156,8 @@ Jalankan `supabase/migration-penilaian-poin.sql` di Supabase SQL Editor sekali s
 ## Update: Kecepatan
 File `vercel.json` mengatur server Vercel di region Singapura (sin1). Pastikan region project Supabase
 juga Singapore (Supabase -> Project Settings -> General). Jika berbeda, ubah "regions" di vercel.json.
+
+## Pembaruan: Kenaikan Jilid Ummi + Statistik Dashboard
+1. Jalankan `supabase/migration-kenaikan-jilid.sql` sekali di Supabase SQL Editor (New query -> Run).
+2. Menu baru **Kenaikan Jilid Ummi**; jumlah halaman tiap jilid & syarat siap ujian diatur di **Pengaturan Penilaian**.
+3. Dashboard kini memuat statistik (kartu ringkas, grafik, daftar tindakan, papan prestasi, perbandingan guru untuk admin).

@@ -17,4 +17,4 @@ export async function fetchAll<T = any>(build: () => any, pageSize = 1000): Prom
 
 /** Kolom setoran yang dibutuhkan untuk hitung hafalan/capaian (lebih ringan dari select *). */
 export const SETORAN_HAFALAN_COLS =
-  'id,santri_id,tanggal,jenis,surah,ayat_mulai,surah_selesai,ayat_selesai,halaman_mulai,halaman_selesai,nilai,predikat,halaqah_id,penyimak_id';
+  'id,santri_id,tanggal,jenis,surah,ayat_mulai,surah_selesai,ayat_selesai,halaman_mulai,halaman_selesai,nilai,predikat,halaqah_id,penyimak_id,created_at';

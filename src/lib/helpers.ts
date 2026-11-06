@@ -26,6 +26,22 @@ export const LEVEL_JILID_UMMI = ['Jilid 1', 'Jilid 2', 'Jilid 3', 'Jilid 4', 'Ji
 export const LEVEL_UMMI_OPTIONS = [...LEVEL_JILID_UMMI, 'Gharib/Tajwid', "Al-Qur'an"];
 export const MAX_HALAMAN_UMMI = 50; // Maksimal halaman buku Jilid Ummi 1-6
 
+// ============== KENAIKAN JILID ==============
+// Jumlah halaman tiap jilid (bisa diubah admin di Pengaturan). Nilai awal hanya perkiraan.
+export const DEFAULT_HALAMAN_JILID: Record<string, number> = {
+  'Jilid 1': 40, 'Jilid 2': 40, 'Jilid 3': 40, 'Jilid 4': 40, 'Jilid 5': 40, 'Jilid 6': 40,
+};
+// Syarat "siap ujian": halaman terakhir jilid dicapai dengan nilai >= nilai_halaman_akhir,
+// dan rata-rata nilai `jumlah_setoran` setoran Ummi terakhir >= rata_min.
+export type SyaratUjian = { rata_min: number; jumlah_setoran: number; nilai_halaman_akhir: number };
+export const DEFAULT_SYARAT_UJIAN: SyaratUjian = { rata_min: 80, jumlah_setoran: 10, nilai_halaman_akhir: 75 };
+
+/** Level berikutnya menurut urutan LEVEL_UMMI_OPTIONS (null jika sudah level terakhir). */
+export function levelBerikutnya(level: string | null | undefined): string | null {
+  const i = LEVEL_UMMI_OPTIONS.indexOf(String(level || ''));
+  return i >= 0 && i < LEVEL_UMMI_OPTIONS.length - 1 ? LEVEL_UMMI_OPTIONS[i + 1] : null;
+}
+
 // ============== PREDIKAT (skala umum tahfiz/Ummi) ==============
 export function calcPredikat(nilai: number | null | undefined): string {
   const n = Number(nilai);

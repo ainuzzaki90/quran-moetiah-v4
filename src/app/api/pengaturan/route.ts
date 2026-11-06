@@ -35,5 +35,24 @@ export const PUT = withErrorHandling(async (req: NextRequest) => {
     const { error } = await db.from('pengaturan').upsert({ kunci: 'poin_per_halaman', nilai: v, updated_at: new Date().toISOString() });
     if (error) throw new Error(error.message);
   }
+  if (p.halaman_per_jilid) {
+    const out: Record<string, number> = {};
+    for (const [k, v] of Object.entries(p.halaman_per_jilid)) {
+      const n = Number(v);
+      if (isNaN(n) || n < 1 || n > 500 || !Number.isInteger(n)) throw new Error(`Jumlah halaman ${k} harus bilangan bulat 1-500`);
+      out[k] = n;
+    }
+    const { error } = await db.from('pengaturan').upsert({ kunci: 'halaman_per_jilid', nilai: out, updated_at: new Date().toISOString() });
+    if (error) throw new Error(error.message);
+  }
+  if (p.syarat_ujian) {
+    const sy = {
+      rata_min: Number(p.syarat_ujian.rata_min), jumlah_setoran: Number(p.syarat_ujian.jumlah_setoran),
+      nilai_halaman_akhir: Number(p.syarat_ujian.nilai_halaman_akhir),
+    };
+    if (Object.values(sy).some((v) => isNaN(v) || v < 0 || v > 100) || sy.jumlah_setoran < 1) throw new Error('Syarat ujian tidak valid (nilai 0-100, jumlah setoran minimal 1)');
+    const { error } = await db.from('pengaturan').upsert({ kunci: 'syarat_ujian', nilai: sy, updated_at: new Date().toISOString() });
+    if (error) throw new Error(error.message);
+  }
   return jsonOk();
 });

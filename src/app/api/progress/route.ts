@@ -5,6 +5,7 @@ import { getToken, jsonOk, withErrorHandling } from '@/lib/api-helpers';
 import { parseHalaqahParam } from '@/lib/halaqah';
 import { isSantriBinaanPenyimak } from '@/lib/relations';
 import { computeCapaianTerakhir, ASPEK_LIST } from '@/lib/helpers';
+import { getKenaikanTerakhir, filterSetoranSejakNaik } from '@/lib/ummi';
 import { computeHafalan } from '@/lib/hafalan';
 import { getPengaturan } from '@/lib/pengaturan';
 
@@ -104,7 +105,7 @@ export const GET = withErrorHandling(async (req: NextRequest) => {
   // ---- Poin prestasi hafalan (kumulatif, semua halaqah) ----
   const { poin_per_halaman } = pengaturan;
   // Halaman/surah terakhir dibagi lintas halaqah
-  const capaian = computeCapaianTerakhir((setoranSemua || []) as any);
+  const capaian = computeCapaianTerakhir(filterSetoranSejakNaik((setoranSemua || []) as any[], (await getKenaikanTerakhir())[String(santriId)]) as any);
   const awal = (awalRes.data || []).map((a) => a.surah_no);
   const hafalSampaiAkhir = computeHafalan((setoranSemua || []).filter((s) => new Date(s.tanggal) <= end) as any, awal);
   const hafalSebelumMulai = computeHafalan((setoranSemua || []).filter((s) => new Date(s.tanggal) < start) as any, awal);

@@ -18,6 +18,7 @@ import RekapView from './views/Rekap';
 import MushafView from './views/Mushaf';
 import PengaturanView from './views/Pengaturan';
 import UsersView from './views/Users';
+import KenaikanJilidView from './views/KenaikanJilid';
 
 export type User = { id: number; nama: string; role: Role; kelas_id: number | null };
 
@@ -94,6 +95,7 @@ export default function AppShell() {
           {view === 'presensi' && <PresensiView user={user} />}
           {view === 'statistik' && <StatistikView user={user} />}
           {view === 'progress' && <ProgressView user={user} />}
+          {view === 'kenaikan' && <KenaikanJilidView user={user} />}
           {view === 'rekap' && <RekapView user={user} />}
           {view === 'mushaf' && <MushafView />}
           {view === 'pengaturan' && <PengaturanView />}
