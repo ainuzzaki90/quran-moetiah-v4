@@ -166,6 +166,7 @@ juga Singapore (Supabase -> Project Settings -> General). Jika berbeda, ubah "re
 - Data mushaf dibundel di `public/mushaf/mushaf-data.json` + font KFGQPC Uthmanic Hafs (tanpa SQL, tanpa API eksternal).
 - Fitur: perbesar (🔍), terakhir dibaca, lompat surah/juz, sorotan ayat setoran ("Lihat di Mushaf" di Setoran & Progress), Peta Hafalan 604 halaman.
 - Sumber teks: @quran.ws/text (CC-BY-4.0); font KFGQPC. Batas halaman mengikuti dataset; 25 halaman berbeda dari tabel quran-meta yang dipakai poin/peta.
+- Batas halaman Mushaf, poin, dan Peta Hafalan kini memakai satu sumber (sudah dicek dengan mushaf cetak hal. 597).
 - Regenerasi data: `node scripts/build-mushaf-data.mjs`.
 
 ## Setoran + Mushaf berdampingan
