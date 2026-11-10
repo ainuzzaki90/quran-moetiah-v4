@@ -161,3 +161,9 @@ juga Singapore (Supabase -> Project Settings -> General). Jika berbeda, ubah "re
 1. Jalankan `supabase/migration-kenaikan-jilid.sql` sekali di Supabase SQL Editor (New query -> Run).
 2. Menu baru **Kenaikan Jilid Ummi**; jumlah halaman tiap jilid & syarat siap ujian diatur di **Pengaturan Penilaian**.
 3. Dashboard kini memuat statistik (kartu ringkas, grafik, daftar tindakan, papan prestasi, perbandingan guru untuk admin).
+
+## Mushaf Digital (15 baris, gaya Madinah)
+- Data mushaf dibundel di `public/mushaf/mushaf-data.json` + font KFGQPC Uthmanic Hafs (tanpa SQL, tanpa API eksternal).
+- Fitur: perbesar (🔍), terakhir dibaca, lompat surah/juz, sorotan ayat setoran ("Lihat di Mushaf" di Setoran & Progress), Peta Hafalan 604 halaman.
+- Sumber teks: @quran.ws/text (CC-BY-4.0); font KFGQPC. Batas halaman mengikuti dataset; 25 halaman berbeda dari tabel quran-meta yang dipakai poin/peta.
+- Regenerasi data: `node scripts/build-mushaf-data.mjs`.

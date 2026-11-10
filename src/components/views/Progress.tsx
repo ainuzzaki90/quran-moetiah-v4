@@ -1,5 +1,6 @@
 'use client';
 
+import type { MushafTarget } from '@/lib/mushaf-target';
 import { useEffect, useState } from 'react';
 import { useHalaqah, halaqahLabel } from '../HalaqahSelect';
 import { api } from '@/lib/api-client';
@@ -13,7 +14,7 @@ const BADGE_CLS: Record<string, string> = {
   'Murojaah': 'b-murajaah', 'Tilawah': 'b-tilawah', 'Setoran Metode Ummi': 'b-ummi',
 };
 
-export default function ProgressView({ user }: { user: User }) {
+export default function ProgressView({ user, onOpenMushaf }: { user: User; onOpenMushaf?: (t: MushafTarget) => void }) {
   const isSantri = user.role === 'santri';
   const [santriList, setSantriList] = useState<any[]>([]);
   const { list: halaqahList } = useHalaqah();
@@ -98,6 +99,9 @@ export default function ProgressView({ user }: { user: User }) {
                 <br />
                 📖 Hafalan tertinggi: <b>{data.poin_prestasi?.hafalan_tertinggi_label || 'Belum ada'}</b>
                 {data.surah_terakhir && <span style={{ color: 'var(--text-muted)' }}> (setoran terakhir: {String(data.surah_terakhir.tanggal).substring(0, 10)})</span>}
+                {onOpenMushaf && (
+                  <button className="tf-btn-sm" style={{ marginLeft: 10 }} onClick={() => onOpenMushaf({ tab: 'peta', santriId: isSantri ? undefined : Number(santriId) })}>🗺️ Peta Hafalan</button>
+                )}
               </div>
 
               <div className="tf-stats">

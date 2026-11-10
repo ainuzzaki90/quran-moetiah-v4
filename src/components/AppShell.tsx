@@ -19,12 +19,15 @@ import MushafView from './views/Mushaf';
 import PengaturanView from './views/Pengaturan';
 import UsersView from './views/Users';
 import KenaikanJilidView from './views/KenaikanJilid';
+import type { MushafTarget } from '@/lib/mushaf-target';
 
 export type User = { id: number; nama: string; role: Role; kelas_id: number | null };
 
 export default function AppShell() {
   const [user, setUser] = useState<User | null>(null);
   const [view, setView] = useState('dashboard');
+  const [mushafTarget, setMushafTarget] = useState<MushafTarget | null>(null);
+  const openMushaf = useCallback((t: MushafTarget) => { setMushafTarget(t); setView('mushaf'); }, []);
   // Di layar lebar (desktop/tablet >=768px) sidebar tampil default terbuka;
   // di layar sempit (HP) default tertutup (mode overlay). Nilai ini juga yang
   // dipakai untuk tombol hamburger buka/tutup sidebar secara dinamis.
@@ -82,7 +85,7 @@ export default function AppShell() {
         onClose={() => setSidebarOpen(false)}
         menu={allowedMenu}
         activeView={view}
-        onSelect={(k) => { setView(k); if (!isDesktop) setSidebarOpen(false); }}
+        onSelect={(k) => { if (k === 'mushaf') setMushafTarget(null); setView(k); if (!isDesktop) setSidebarOpen(false); }}
       />
       <div className="tf-right-col">
         <Topbar user={user} onToggleSidebar={() => setSidebarOpen((v) => !v)} onLogout={handleLogout} />
@@ -91,13 +94,13 @@ export default function AppShell() {
           {view === 'santri' && <SantriView user={user} />}
           {view === 'kelas' && <KelasView user={user} />}
           {view === 'halaqah' && <HalaqahView user={user} />}
-          {view === 'setoran' && <SetoranView user={user} />}
+          {view === 'setoran' && <SetoranView user={user} onOpenMushaf={openMushaf} />}
           {view === 'presensi' && <PresensiView user={user} />}
           {view === 'statistik' && <StatistikView user={user} />}
-          {view === 'progress' && <ProgressView user={user} />}
+          {view === 'progress' && <ProgressView user={user} onOpenMushaf={openMushaf} />}
           {view === 'kenaikan' && <KenaikanJilidView user={user} />}
           {view === 'rekap' && <RekapView user={user} />}
-          {view === 'mushaf' && <MushafView />}
+          {view === 'mushaf' && <MushafView user={user} target={mushafTarget} />}
           {view === 'pengaturan' && <PengaturanView />}
           {view === 'users' && <UsersView />}
         </div>

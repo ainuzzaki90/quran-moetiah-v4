@@ -25,7 +25,7 @@ type Row = { jenis: string; surah?: string | null; ayat_mulai?: any; surah_seles
  * - Urutan menghafal tradisional: An-Nas (114) -> turun ke An-Naba (78) -> Juz 29 dst.
  *   `berurutan` = banyak surat yang hafal tanpa terputus mulai dari An-Nas.
  */
-export function computeHafalan(rows: Row[], awalSurahNos: number[] = []) {
+export function computeHafalan(rows: Row[], awalSurahNos: number[] = [], withPages = false) {
   const covered: Record<number, Set<number>> = {};
   const cover = (no: number, from: number, to: number) => {
     const max = AYAT[no];
@@ -85,12 +85,15 @@ export function computeHafalan(rows: Row[], awalSurahNos: number[] = []) {
     else if (covered[no]) covered[no].forEach((a) => { hafalAyat[OFFSET[no] + a] = 1; });
   }
   let halamanHafal = 0;
+  // status tiap halaman (hanya bila diminta): 0 = belum, 1 = sebagian, 2 = penuh
+  const halamanStatus: number[] | null = withPages ? new Array(604).fill(0) : null;
   for (let p = 0; p < 604; p++) {
     const from = PAGE_FIRST_AYAH_ID[p];
     const to = p + 1 < 604 ? PAGE_FIRST_AYAH_ID[p + 1] - 1 : 6236;
-    let penuh = true;
-    for (let i = from; i <= to; i++) if (!hafalAyat[i]) { penuh = false; break; }
+    let penuh = true, ada = false;
+    for (let i = from; i <= to; i++) { if (hafalAyat[i]) ada = true; else penuh = false; }
     if (penuh) halamanHafal++;
+    if (halamanStatus) halamanStatus[p] = penuh ? 2 : ada ? 1 : 0;
   }
 
   // Surat yang sedang berjalan: surat berikutnya setelah rangkaian berurutan, bila sudah sebagian disetor
@@ -109,5 +112,6 @@ export function computeHafalan(rows: Row[], awalSurahNos: number[] = []) {
     berurutan,
     berurutan_label: berurutan ? `An-Nas → ${terakhirNama} (${berurutan} surat)` : '-',
     hafal_nos: Array.from(hafal).sort((x, y) => y - x),
+    ...(halamanStatus ? { halaman_status: halamanStatus } : {}),
   };
 }

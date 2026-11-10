@@ -5,6 +5,7 @@ import { api } from '@/lib/api-client';
 import { UMMI_RUBRIK, LEVEL_JILID_UMMI, MAX_HALAMAN_UMMI, calcPredikat, DEFAULT_BOBOT, JENIS_PAKAI_ASPEK, hitungNilaiAspek, Bobot } from '@/lib/helpers';
 import AspekPicker, { emptySkor, SkorState } from '../AspekPicker';
 import { SURAH_PAGES } from '@/lib/surah-pages';
+import { surahNo, targetDariTeksCapaian, type MushafTarget } from '@/lib/mushaf-target';
 import { showToast } from '@/lib/toast';
 import Modal from '../Modal';
 import HalaqahSelect, { useHalaqah } from '../HalaqahSelect';
@@ -33,7 +34,7 @@ function nowDateTimeStr() {
 
 const HALAMAN_OPTIONS = Array.from({ length: MAX_HALAMAN_UMMI }, (_, i) => i + 1);
 
-export default function SetoranView({ user }: { user: User }) {
+export default function SetoranView({ user, onOpenMushaf }: { user: User; onOpenMushaf?: (t: MushafTarget) => void }) {
   const [santriList, setSantriList] = useState<any[]>([]);
   const [riwayat, setRiwayat] = useState<any[]>([]);
   const [error, setError] = useState('');
@@ -244,7 +245,11 @@ export default function SetoranView({ user }: { user: User }) {
                 <>📄 Halaman terakhir: <b>{siswaTerpilih.halaman_terakhir}</b><br /></>
               )}
               {siswaTerpilih.surah_terakhir && siswaTerpilih.surah_terakhir !== '-' && (
-                <>📖 Surah terakhir: <b>{siswaTerpilih.surah_terakhir}</b></>
+                <>📖 Surah terakhir: <b>{siswaTerpilih.surah_terakhir}</b>
+                  {onOpenMushaf && targetDariTeksCapaian(siswaTerpilih.surah_terakhir) && (
+                    <> <button type="button" className="tf-btn-sm" style={{ marginLeft: 8 }} onClick={() => onOpenMushaf(targetDariTeksCapaian(siswaTerpilih.surah_terakhir)!)}>Lihat di Mushaf</button></>
+                  )}
+                </>
               )}
               {(!siswaTerpilih.halaman_terakhir || siswaTerpilih.halaman_terakhir === '-') &&
                (!siswaTerpilih.surah_terakhir || siswaTerpilih.surah_terakhir === '-') &&
@@ -425,6 +430,13 @@ export default function SetoranView({ user }: { user: User }) {
                     <td>{r.nilai ?? '-'}</td>
                     <td>{r.predikat || '-'}</td>
                     <td style={{ whiteSpace: 'nowrap' }}>
+                      {onOpenMushaf && r.jenis !== 'Setoran Metode Ummi' && surahNo(r.surah) && (
+                        <button className="tf-btn-icon" title="Lihat di Mushaf" onClick={() => onOpenMushaf({
+                          surah: surahNo(r.surah)!, ayat: Number(r.ayat_mulai) || 1,
+                          surahSelesai: surahNo(r.surah_selesai || r.surah) || undefined, ayatSelesai: Number(r.ayat_selesai) || undefined,
+                          label: `${r.surah} : ${r.ayat_mulai}–${r.ayat_selesai}`,
+                        })}>📖</button>
+                      )}
                       <button className="tf-btn-icon" title="Edit" onClick={() => bukaEdit(r)}>✏️</button>
                       <button className="tf-btn-icon tf-btn-icon-del" title="Hapus" onClick={() => hapus(r.id)}>🗑</button>
                     </td>
