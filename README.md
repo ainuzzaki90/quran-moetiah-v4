@@ -167,3 +167,9 @@ juga Singapore (Supabase -> Project Settings -> General). Jika berbeda, ubah "re
 - Fitur: perbesar (🔍), terakhir dibaca, lompat surah/juz, sorotan ayat setoran ("Lihat di Mushaf" di Setoran & Progress), Peta Hafalan 604 halaman.
 - Sumber teks: @quran.ws/text (CC-BY-4.0); font KFGQPC. Batas halaman mengikuti dataset; 25 halaman berbeda dari tabel quran-meta yang dipakai poin/peta.
 - Regenerasi data: `node scripts/build-mushaf-data.mjs`.
+
+## Setoran + Mushaf berdampingan
+- Di halaman Setoran, panel mushaf muncul saat siswa dipilih dan jenis Hafalan Baru / Murojaah / Tilawah dicentang (tidak muncul untuk Penilaian Metode Ummi saja).
+- Laptop: form di kiri, mushaf di kanan. HP: tab "Form" / "Mushaf" (isian tidak hilang saat berpindah tab).
+- Ketuk ayat awal lalu ayat akhir -> mengisi Surah/Ayat Awal & Akhir di form; isian manual tetap bisa, dan mushaf mengikuti perubahan form.
+- Posisi awal mushaf = surah terakhir siswa (atau An-Nas jika belum ada). Tanpa SQL baru.

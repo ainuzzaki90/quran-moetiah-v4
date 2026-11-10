@@ -29,7 +29,13 @@ const key = (s: number, a: number) => s * 1000 + a;
 
 type Range = { lo: number; hi: number };
 
-export default function MushafView({ user, target }: { user: User; target?: MushafTarget | null }) {
+export type MushafPick = { surahMulai: number; ayatMulai: number; surahSelesai: number; ayatSelesai: number };
+
+export default function MushafView({ user, target, embedded, onPick, pickHint }: {
+  user: User; target?: MushafTarget | null;
+  /** Dipakai di halaman Setoran: tanpa judul/tab, ayat bisa diketuk untuk mengisi form. */
+  embedded?: boolean; onPick?: (r: MushafPick) => void; pickHint?: string;
+}) {
   const [data, setData] = useState<MushafData | null>(null);
   const [error, setError] = useState('');
   const [tab, setTab] = useState<'baca' | 'peta'>('baca');
@@ -45,6 +51,8 @@ export default function MushafView({ user, target }: { user: User; target?: Mush
   const wrapRef = useRef<HTMLDivElement>(null);
   const probeRef = useRef<HTMLSpanElement>(null);
   const [petaSantri, setPetaSantri] = useState<string>('');
+  const [pickStart, setPickStart] = useState<number | null>(null);
+  const pickedRef = useRef('');
 
   // ---- muat data + font ----
   useEffect(() => {
@@ -85,7 +93,14 @@ export default function MushafView({ user, target }: { user: User; target?: Mush
       const s2 = target.surahSelesai || target.surah, a2 = target.ayatSelesai || target.ayat;
       const lo = key(target.surah, target.ayat), hi = key(s2, a2);
       setTab('baca');
+      if (target.soroti === false) {
+        setRange(null); setRangeLabel(''); setPickStart(null); pickedRef.current = '';
+        goPage(ayahPage.get(lo) || 1);
+        return;
+      }
       setRange({ lo: Math.min(lo, hi), hi: Math.max(lo, hi) });
+      if (pickedRef.current === `${Math.min(lo, hi)}-${Math.max(lo, hi)}`) return; // berasal dari ketukan sendiri: jangan loncat halaman
+      setPickStart(null);
       const nama = SURAH_PAGES[target.surah - 1]?.[1] || '';
       setRangeLabel(target.label || `${nama} : ${target.ayat}${(s2 !== target.surah || a2 !== target.ayat) ? `–${s2 !== target.surah ? (SURAH_PAGES[s2 - 1]?.[1] + ' : ') : ''}${a2}` : ''}`);
       goPage(ayahPage.get(key(target.surah, target.ayat)) || 1);
@@ -141,6 +156,25 @@ export default function MushafView({ user, target }: { user: User; target?: Mush
     const n = Math.min(ZOOMS.length - 1, Math.max(0, zoomIdx + d));
     setZoomIdx(n); lsSet('zoom', String(n));
   }
+  function klikAyat(sn: number, an: number, isSel: boolean) {
+    if (!onPick) { setSel(isSel ? null : { s: sn, a: an }); return; }
+    const k = key(sn, an);
+    if (pickStart === null) {
+      setPickStart(k);
+      pickedRef.current = `${k}-${k}`;
+      setRange({ lo: k, hi: k });
+      setRangeLabel(`${SURAH_PAGES[sn - 1]?.[1]} : ${an}`);
+      onPick({ surahMulai: sn, ayatMulai: an, surahSelesai: sn, ayatSelesai: an });
+    } else {
+      const lo = Math.min(pickStart, k), hi = Math.max(pickStart, k);
+      const s1 = Math.floor(lo / 1000), a1 = lo % 1000, s2 = Math.floor(hi / 1000), a2 = hi % 1000;
+      pickedRef.current = `${lo}-${hi}`;
+      setPickStart(null);
+      setRange({ lo, hi });
+      setRangeLabel(`${SURAH_PAGES[s1 - 1]?.[1]} : ${a1}${s2 !== s1 || a2 !== a1 ? `–${s2 !== s1 ? SURAH_PAGES[s2 - 1]?.[1] + ' : ' : ''}${a2}` : ''}`);
+      onPick({ surahMulai: s1, ayatMulai: a1, surahSelesai: s2, ayatSelesai: a2 });
+    }
+  }
   const inRange = (s: number, a: number) => !!range && key(s, a) >= range.lo && key(s, a) <= range.hi;
   const surahHalaman = SURAH_PAGES[0] ? SURAH_PAGES : [];
   const juzNow = data ? data.juzStart.filter((p) => p <= page).length : 1;
@@ -150,13 +184,19 @@ export default function MushafView({ user, target }: { user: User; target?: Mush
 
   return (
     <div>
-      <h1 className="tf-title">Mushaf Digital</h1>
+      {!embedded && <h1 className="tf-title">Mushaf Digital</h1>}
       <div className="tf-panel">
         <div className="tf-panel-body">
-          <div style={{ display: 'flex', gap: 6, marginBottom: 12, flexWrap: 'wrap' }}>
+          {embedded && onPick && (
+            <div className="tf-empty" style={{ textAlign: 'left', marginBottom: 10 }}>
+              ✍️ {pickHint || 'Ketuk ayat untuk mengisi form.'}
+              {pickStart !== null && <> <b>Ayat awal dipilih — ketuk ayat akhir</b> (atau ketuk ayat yang sama lagi jika hanya satu ayat).</>}
+            </div>
+          )}
+          {!embedded && <div style={{ display: 'flex', gap: 6, marginBottom: 12, flexWrap: 'wrap' }}>
             <button className={tab === 'baca' ? 'tf-btn-sm tf-btn' : 'tf-btn-sm'} onClick={() => setTab('baca')}>📖 Baca Mushaf</button>
             <button className={tab === 'peta' ? 'tf-btn-sm tf-btn' : 'tf-btn-sm'} onClick={() => setTab('peta')}>🗺️ Peta Hafalan</button>
-          </div>
+          </div>}
           {error && <div className="tf-error">{error}</div>}
           {!data && !error && <div className="tf-empty">Memuat mushaf...</div>}
 
@@ -187,10 +227,10 @@ export default function MushafView({ user, target }: { user: User; target?: Mush
 
               {range && (
                 <div className="tf-empty" style={{ textAlign: 'left', marginBottom: 10, display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap' }}>
-                  <span>🟨 Setoran: <b>{rangeLabel}</b>{firstRangePage && lastRangePage && firstRangePage !== lastRangePage ? ` · hal. ${firstRangePage}–${lastRangePage}` : firstRangePage ? ` · hal. ${firstRangePage}` : ''}</span>
+                  <span>🟨 {embedded ? 'Terpilih' : 'Setoran'}: <b>{rangeLabel}</b>{firstRangePage && lastRangePage && firstRangePage !== lastRangePage ? ` · hal. ${firstRangePage}–${lastRangePage}` : firstRangePage ? ` · hal. ${firstRangePage}` : ''}</span>
                   {firstRangePage > 0 && page !== firstRangePage && <button className="tf-btn-sm" onClick={() => goPage(firstRangePage)}>Ke awal rentang</button>}
                   {lastRangePage > page && <button className="tf-btn-sm" onClick={() => goPage(page + 1)}>Rentang berlanjut ›</button>}
-                  <button className="tf-btn-sm" onClick={() => { setRange(null); setRangeLabel(''); }}>Hapus sorotan</button>
+                  <button className="tf-btn-sm" onClick={() => { setRange(null); setRangeLabel(''); setPickStart(null); pickedRef.current = ''; }}>Hapus sorotan</button>
                 </div>
               )}
               {sel && (
@@ -215,7 +255,7 @@ export default function MushafView({ user, target }: { user: User; target?: Mush
                           return (
                             <span key={j}>
                               {j > 0 ? ' ' : ''}
-                              <span className={`mq-ay${isSel ? ' mq-sel' : hl ? ' mq-hl' : ''}`} onClick={() => sg[0] && setSel(isSel ? null : { s: sg[0], a: sg[1] })}>{sg[2]}</span>
+                              <span className={`mq-ay${isSel ? ' mq-sel' : hl ? ' mq-hl' : ''}`} onClick={() => sg[0] && klikAyat(sg[0], sg[1], isSel)}>{sg[2]}</span>
                             </span>
                           );
                         })}

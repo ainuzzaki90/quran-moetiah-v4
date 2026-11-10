@@ -430,3 +430,17 @@
   .mq-cell{width:30px;height:28px;border-radius:6px;border:1px solid var(--border);background:var(--surface-alt);color:var(--text-muted);font-size:11px;cursor:pointer;padding:0;}
   .mq-cell.s1{background:var(--gold);border-color:var(--gold-dark);color:#2b1f00;}
   .mq-cell.s2{background:var(--forest);border-color:var(--forest);color:#fff;}
+
+  /* Setoran + Mushaf berdampingan */
+  .tf-split-tabs{display:none;gap:6px;margin-bottom:10px;}
+  .tf-split-mushaf{display:none;}
+  @media(max-width:1099px){
+    .tf-split-tabs{display:flex;}
+    .tf-split-on.tf-show-form .tf-split-mushaf{display:none;}
+    .tf-split-on.tf-show-mushaf .tf-split-form{display:none;}
+    .tf-split-on.tf-show-mushaf .tf-split-mushaf{display:block;}
+  }
+  @media(min-width:1100px){
+    .tf-split-on{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:16px;align-items:start;}
+    .tf-split-on .tf-split-mushaf{display:block;position:sticky;top:12px;max-height:calc(100vh - 24px);overflow-y:auto;}
+  }

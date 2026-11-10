@@ -8,6 +8,8 @@ export type MushafTarget = {
   /** Untuk tab baca: rentang ayat yang disorot (nomor surah). */
   surah?: number; ayat?: number; surahSelesai?: number; ayatSelesai?: number;
   label?: string;
+  /** false = hanya pindah ke halaman, tanpa sorotan. */
+  soroti?: boolean;
 };
 
 export function surahNo(nama: string | null | undefined): number | null {

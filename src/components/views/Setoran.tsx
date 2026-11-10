@@ -8,6 +8,7 @@ import { SURAH_PAGES } from '@/lib/surah-pages';
 import { surahNo, targetDariTeksCapaian, type MushafTarget } from '@/lib/mushaf-target';
 import { showToast } from '@/lib/toast';
 import Modal from '../Modal';
+import MushafView, { type MushafPick } from './Mushaf';
 import HalaqahSelect, { useHalaqah } from '../HalaqahSelect';
 import type { User } from '../AppShell';
 
@@ -95,6 +96,35 @@ export default function SetoranView({ user, onOpenMushaf }: { user: User; onOpen
       'Tilawah': false,
     });
     setJenisFields({ 'Hafalan Baru': emptyJenisFields(), 'Murojaah': emptyJenisFields(), 'Tilawah': emptyJenisFields() });
+  }
+
+  // ---- panel mushaf di samping form (mengikuti jenis setoran yang dicentang) ----
+  const [pickJenis, setPickJenis] = useState<Jenis | ''>('');
+  const [mobTab, setMobTab] = useState<'form' | 'mushaf'>('form');
+  const jenisAktif = JENIS_OPTIONS.filter((j) => jenisChecked[j]);
+  const jenisPick: Jenis | '' = pickJenis && jenisChecked[pickJenis] ? pickJenis : (jenisAktif[0] || '');
+  const tampilMushaf = !!santriId && jenisAktif.length > 0;
+
+  const mushafTarget = useMemo<MushafTarget | null>(() => {
+    if (!tampilMushaf || !jenisPick) return null;
+    const f = jenisFields[jenisPick];
+    const sNo = surahNo(f.surahMulai);
+    if (sNo && Number(f.ayatMulai)) {
+      const s2 = surahNo(f.surahSelesai || f.surahMulai) || sNo;
+      const a2 = Number(f.ayatSelesai) || Number(f.ayatMulai);
+      return { surah: sNo, ayat: Number(f.ayatMulai), surahSelesai: s2, ayatSelesai: a2 };
+    }
+    if (sNo) return { surah: sNo, ayat: 1, soroti: false };
+    const last = targetDariTeksCapaian(siswaTerpilih?.surah_terakhir);
+    if (last) return { surah: last.surah, ayat: last.ayat, soroti: false };
+    return { surah: 114, ayat: 1, soroti: false }; // hafalan dimulai dari An-Nas
+  }, [tampilMushaf, jenisPick, jenisFields, siswaTerpilih]);
+
+  function isiDariMushaf(r: MushafPick) {
+    if (!jenisPick) return;
+    const nama1 = SURAH_PAGES[r.surahMulai - 1]?.[1] || '';
+    const nama2 = SURAH_PAGES[r.surahSelesai - 1]?.[1] || '';
+    setJenisFields((prev) => ({ ...prev, [jenisPick]: { ...prev[jenisPick], surahMulai: nama1, ayatMulai: String(r.ayatMulai), surahSelesai: nama2, ayatSelesai: String(r.ayatSelesai) } }));
   }
 
   function updateJenisField(jenis: Jenis, field: keyof JenisFields, value: string) {
@@ -227,6 +257,14 @@ export default function SetoranView({ user, onOpenMushaf }: { user: User; onOpen
       {error && <div className="tf-error">{error}</div>}
       {ok && <div className="tf-empty">{ok}</div>}
 
+      {tampilMushaf && (
+        <div className="tf-split-tabs">
+          <button className={mobTab === 'form' ? 'tf-btn-sm tf-btn' : 'tf-btn-sm'} onClick={() => setMobTab('form')}>📝 Form</button>
+          <button className={mobTab === 'mushaf' ? 'tf-btn-sm tf-btn' : 'tf-btn-sm'} onClick={() => setMobTab('mushaf')}>📖 Mushaf</button>
+        </div>
+      )}
+      <div className={tampilMushaf ? `tf-split tf-split-on tf-show-${mobTab}` : 'tf-split'}>
+      <div className="tf-split-form">
       <div className="tf-panel">
         <div className="tf-panel-head">Tambah Setoran</div>
         <div className="tf-panel-body">
@@ -403,6 +441,23 @@ export default function SetoranView({ user, onOpenMushaf }: { user: User; onOpen
             </>
           )}
         </div>
+      </div>
+
+      </div>
+      {tampilMushaf && (
+        <div className="tf-split-mushaf">
+          {jenisAktif.length > 1 && (
+            <div className="tf-field" style={{ marginBottom: 8 }}>
+              <label>Ketukan ayat mengisi form jenis:</label>
+              <select value={jenisPick} onChange={(e) => setPickJenis(e.target.value as Jenis)}>
+                {jenisAktif.map((j) => <option key={j} value={j}>{j}</option>)}
+              </select>
+            </div>
+          )}
+          <MushafView user={user} target={mushafTarget} embedded onPick={isiDariMushaf}
+            pickHint={`Ketuk ayat awal lalu ayat akhir — mengisi form "${jenisPick}".`} />
+        </div>
+      )}
       </div>
 
       <div className="tf-panel">
