@@ -183,4 +183,4 @@ juga Singapore (Supabase -> Project Settings -> General). Jika berbeda, ubah "re
 
 ## Tampilan HP/tablet
 - Header selalu menampilkan nama akun + peran (nama panjang dibungkus 2 baris).
-- Tabel yang tidak muat di lebarnya otomatis tampil sebagai kartu (judul kolom di kiri, isi di kanan) — lihat `src/components/TableLabels.tsx` dan CSS `.tf-cards`. Di mode kartu, pengurutan lewat klik header tidak tersedia (tabel normal di layar lebar tetap bisa).
+- Tabel yang tidak muat di lebarnya otomatis tampil sebagai kartu (judul kolom di kiri, isi di kanan) — lihat `src/components/TableLabels.tsx` dan CSS `.tf-cards`. Di atas tiap tabel (4 kolom ke atas) ada pilihan "☰ Kartu | ▦ Tabel" (satu pilihan untuk semua tabel, diingat per perangkat di localStorage `mq_table_view`; belum memilih = otomatis). Mode Kartu punya kotak "Urutkan"; mode Tabel bisa digeser dengan kolom nama menempel di kiri.

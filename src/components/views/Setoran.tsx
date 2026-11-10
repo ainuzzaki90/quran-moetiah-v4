@@ -53,7 +53,7 @@ export default function SetoranView({ user, onOpenMushaf }: { user: User; onOpen
   const [santriId, setSantriId] = useState('');
   const [catatan, setCatatan] = useState('');
 
-  const [ummiChecked, setUmmiChecked] = useState(true);
+  const [ummiChecked, setUmmiChecked] = useState(false);
   const [halamanMulai, setHalamanMulai] = useState('');
   const [halamanSelesai, setHalamanSelesai] = useState('');
   const [rubrikKode, setRubrikKode] = useState('');
@@ -86,7 +86,7 @@ export default function SetoranView({ user, onOpenMushaf }: { user: User; onOpen
   // persis seperti renderSetoranFields() di versi lama.
   function pilihSiswa(id: string) {
     setSantriId(id);
-    setUmmiChecked(true);
+    setUmmiChecked(false);
     setHalamanMulai(''); setHalamanSelesai(''); setRubrikKode('');
     const s = santriList.find((x) => String(x.id) === String(id));
     const lvlJilid = isJilidUmmiLevel(s?.level_ummi || '');
@@ -142,7 +142,7 @@ export default function SetoranView({ user, onOpenMushaf }: { user: User; onOpen
   }
 
   function resetForm() {
-    setUmmiChecked(true);
+    setUmmiChecked(false);
     setHalamanMulai(''); setHalamanSelesai(''); setRubrikKode('');
     setJenisChecked({ 'Hafalan Baru': false, 'Murojaah': false, 'Tilawah': false });
     setJenisFields({ 'Hafalan Baru': emptyJenisFields(), 'Murojaah': emptyJenisFields(), 'Tilawah': emptyJenisFields() });
@@ -370,7 +370,7 @@ export default function SetoranView({ user, onOpenMushaf }: { user: User; onOpen
               </div>
 
               {!JENIS_OPTIONS.some((j) => jenisChecked[j]) && (
-                <div className="tf-empty">Pilih minimal satu jenis setoran di atas (jika tidak diisi, pastikan Penilaian Metode Ummi di atas dicentang).</div>
+                <div className="tf-empty">Centang jenis setoran yang ingin diinput (Hafalan Baru, Murojaah, Tilawah, atau Penilaian Metode Ummi untuk siswa Jilid).</div>
               )}
 
               {JENIS_OPTIONS.filter((j) => jenisChecked[j]).map((j) => {

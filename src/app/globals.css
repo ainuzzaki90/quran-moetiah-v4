@@ -465,3 +465,18 @@
     table.tf-table.tf-cards td[colspan]{display:block;text-align:center;}
     table.tf-table.tf-cards td select, table.tf-table.tf-cards td input:not([type=checkbox]):not([type=radio]){max-width:60%;}
   }
+
+  /* ===== Pilihan tampilan tabel / kartu ===== */
+  .tf-viewbar{display:flex;gap:6px;flex-wrap:wrap;align-items:center;margin:0 0 8px;font-size:12.5px;color:var(--text-muted);}
+  .tf-viewbar select{padding:5px 8px;border:1px solid var(--border);background:var(--surface);color:var(--text);border-radius:8px;font-size:12.5px;max-width:100%;}
+  .tf-viewbar button{width:auto;}
+  @media print{ .tf-viewbar{display:none !important;} }
+  .tf-table-wrap:has(> table.tf-scroll), .tf-shadowscroll{overflow-x:auto;
+    background:linear-gradient(to right,var(--surface) 30%,rgba(255,255,255,0)) left center,
+               linear-gradient(to left,var(--surface) 30%,rgba(255,255,255,0)) right center,
+               radial-gradient(farthest-side at 0 50%,rgba(0,0,0,.28),rgba(0,0,0,0)) left center,
+               radial-gradient(farthest-side at 100% 50%,rgba(0,0,0,.28),rgba(0,0,0,0)) right center;
+    background-repeat:no-repeat;background-color:var(--surface);
+    background-size:40px 100%,40px 100%,14px 100%,14px 100%;background-attachment:local,local,scroll,scroll;}
+  table.tf-table.tf-scroll th.tf-sticky, table.tf-table.tf-scroll td.tf-sticky{position:sticky;background:var(--surface);z-index:2;box-shadow:1px 0 0 var(--border);}
+  table.tf-table.tf-scroll th.tf-sticky{z-index:3;}
