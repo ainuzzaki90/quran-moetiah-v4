@@ -4,6 +4,8 @@ import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } fr
 import { SURAH_PAGES } from '@/lib/surah-pages';
 import { api } from '@/lib/api-client';
 import type { MushafTarget } from '@/lib/mushaf-target';
+import { useAyahAudio, gidOf, fromGid, QARIS, TOTAL_AYAT } from '@/lib/ayah-audio';
+import { PAGE_FIRST_AYAH_ID } from '@/lib/mushaf-pages';
 import type { User } from '../AppShell';
 
 type Seg = [number, number, string]; // [surah, ayat, teks]
@@ -53,6 +55,16 @@ export default function MushafView({ user, target, embedded, onPick, pickHint }:
   const [petaSantri, setPetaSantri] = useState<string>('');
   const [pickStart, setPickStart] = useState<number | null>(null);
   const pickedRef = useRef('');
+  const [ayatRep, setAyatRep] = useState(1);
+  const [rangeRep, setRangeRep] = useState(1);
+  const pageRef = useRef(1);
+  const ayahPageRef = useRef<Map<number, number>>(new Map());
+  const goPageRef = useRef<(p: number) => void>(() => {});
+  const audio = useAyahAudio((g) => {
+    const [sn, an] = fromGid(g);
+    const p = ayahPageRef.current.get(key(sn, an));
+    if (p && p !== pageRef.current) goPageRef.current(p);
+  });
 
   // ---- muat data + font ----
   useEffect(() => {
@@ -78,6 +90,9 @@ export default function MushafView({ user, target, embedded, onPick, pickHint }:
     lsSet(`last_${user.id}`, String(n));
   }, [user.id]);
 
+  pageRef.current = page; ayahPageRef.current = ayahPage; goPageRef.current = goPage;
+  useEffect(() => { if (tab === 'peta') audio.stop(); /* eslint-disable-next-line */ }, [tab]);
+
   // ---- halaman awal: target dari layar lain, atau terakhir dibaca ----
   const targetKey = target ? JSON.stringify(target) : '';
   const awalDone = useRef('');
@@ -85,6 +100,7 @@ export default function MushafView({ user, target, embedded, onPick, pickHint }:
     if (!data || awalDone.current === targetKey + '|' + data.pages.length) return;
     awalDone.current = targetKey + '|' + data.pages.length;
     if (target?.tab === 'peta') {
+      audio.stop();
       setTab('peta');
       if (target.santriId) setPetaSantri(String(target.santriId));
       return;
@@ -94,12 +110,14 @@ export default function MushafView({ user, target, embedded, onPick, pickHint }:
       const lo = key(target.surah, target.ayat), hi = key(s2, a2);
       setTab('baca');
       if (target.soroti === false) {
+        audio.stop();
         setRange(null); setRangeLabel(''); setPickStart(null); pickedRef.current = '';
         goPage(ayahPage.get(lo) || 1);
         return;
       }
       setRange({ lo: Math.min(lo, hi), hi: Math.max(lo, hi) });
       if (pickedRef.current === `${Math.min(lo, hi)}-${Math.max(lo, hi)}`) return; // berasal dari ketukan sendiri: jangan loncat halaman
+      audio.stop();
       setPickStart(null);
       const nama = SURAH_PAGES[target.surah - 1]?.[1] || '';
       setRangeLabel(target.label || `${nama} : ${target.ayat}${(s2 !== target.surah || a2 !== target.ayat) ? `–${s2 !== target.surah ? (SURAH_PAGES[s2 - 1]?.[1] + ' : ') : ''}${a2}` : ''}`);
@@ -156,6 +174,25 @@ export default function MushafView({ user, target, embedded, onPick, pickHint }:
     const n = Math.min(ZOOMS.length - 1, Math.max(0, zoomIdx + d));
     setZoomIdx(n); lsSet('zoom', String(n));
   }
+  function mulaiPutar() {
+    const selG = !onPick && sel ? gidOf(sel.s, sel.a) : null;
+    const loG = range ? gidOf(Math.floor(range.lo / 1000), range.lo % 1000) : null;
+    const hiG = range ? gidOf(Math.floor(range.hi / 1000), range.hi % 1000) : null;
+    let from: number, to = TOTAL_AYAT, rangeStart: number | undefined;
+    if (selG) {
+      from = selG;
+      if (loG !== null && hiG !== null && selG >= loG && selG <= hiG) { to = hiG; rangeStart = loG; }
+    } else if (loG !== null && hiG !== null) { from = loG; to = hiG; rangeStart = loG; }
+    else from = PAGE_FIRST_AYAH_ID[page - 1];
+    audio.play({ from, to, rangeStart, ayatRep: embedded ? 1 : ayatRep, rangeRep: embedded || rangeStart === undefined ? 1 : rangeRep });
+  }
+  function tombolPutar() {
+    if (audio.playing) audio.pause();
+    else if (audio.curGid !== null) audio.resume();
+    else mulaiPutar();
+  }
+  const [playS, playA] = audio.curGid ? fromGid(audio.curGid) : [0, 0];
+
   function klikAyat(sn: number, an: number, isSel: boolean) {
     if (!onPick) { setSel(isSel ? null : { s: sn, a: an }); return; }
     const k = key(sn, an);
@@ -225,6 +262,38 @@ export default function MushafView({ user, target, embedded, onPick, pickHint }:
                 </span>
               </div>
 
+              <div className="tf-mushaf-toolbar">
+                <button className="tf-btn-sm tf-btn" style={{ width: 'auto' }} onClick={tombolPutar}>{audio.playing ? '⏸ Jeda' : audio.curGid !== null ? '▶ Lanjut' : '▶ Putar audio'}</button>
+                {audio.curGid !== null && <button className="tf-btn-sm" onClick={() => audio.stop()}>⏹ Berhenti</button>}
+                {audio.curGid !== null && <span style={{ fontSize: 12.5 }}>🔊 {SURAH_PAGES[playS - 1]?.[1]} : {playA}</span>}
+              </div>
+              {!embedded && (
+                <div className="tf-mushaf-toolbar">
+                  <label style={{ fontSize: 12.5 }}>Qari{' '}
+                    <select value={audio.qari} onChange={(e) => audio.setQari(e.target.value)}>
+                      {QARIS.map((q) => <option key={q.id} value={q.id}>{q.nama}</option>)}
+                    </select>
+                  </label>
+                  <label style={{ fontSize: 12.5 }}>Ulang ayat{' '}
+                    <select value={ayatRep} onChange={(e) => setAyatRep(Number(e.target.value))}>
+                      {[1, 3, 5, 10].map((n) => <option key={n} value={n}>{n}×</option>)}
+                    </select>
+                  </label>
+                  <label style={{ fontSize: 12.5 }} title={range ? '' : 'Aktif jika ada rentang ayat yang disorot'}>Ulang rentang{' '}
+                    <select value={rangeRep} disabled={!range} onChange={(e) => setRangeRep(Number(e.target.value))}>
+                      {[1, 3, 5, 10].map((n) => <option key={n} value={n}>{n}×</option>)}
+                    </select>
+                  </label>
+                  <label style={{ fontSize: 12.5 }}>Kecepatan{' '}
+                    <select value={audio.speed} onChange={(e) => audio.setSpeed(Number(e.target.value))}>
+                      {[0.75, 1, 1.25].map((n) => <option key={n} value={n}>{n}×</option>)}
+                    </select>
+                  </label>
+                </div>
+              )}
+              {audio.error && <div className="tf-error" style={{ marginBottom: 8 }}>{audio.error}</div>}
+              {!embedded && <div className="tf-mushaf-note" style={{ marginBottom: 8 }}>Ketuk ayat untuk memilihnya; audio dimulai dari tombol ▶ (dari ayat terpilih, rentang sorotan, atau awal halaman). Audio memerlukan internet.</div>}
+
               {range && (
                 <div className="tf-empty" style={{ textAlign: 'left', marginBottom: 10, display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap' }}>
                   <span>🟨 {embedded ? 'Terpilih' : 'Setoran'}: <b>{rangeLabel}</b>{firstRangePage && lastRangePage && firstRangePage !== lastRangePage ? ` · hal. ${firstRangePage}–${lastRangePage}` : firstRangePage ? ` · hal. ${firstRangePage}` : ''}</span>
@@ -252,10 +321,11 @@ export default function MushafView({ user, target, embedded, onPick, pickHint }:
                         {it[2].map((sg, j) => {
                           const hl = inRange(sg[0], sg[1]);
                           const isSel = !!sel && sel.s === sg[0] && sel.a === sg[1];
+                          const isPlay = playS === sg[0] && playA === sg[1];
                           return (
                             <span key={j}>
                               {j > 0 ? ' ' : ''}
-                              <span className={`mq-ay${isSel ? ' mq-sel' : hl ? ' mq-hl' : ''}`} onClick={() => sg[0] && klikAyat(sg[0], sg[1], isSel)}>{sg[2]}</span>
+                              <span className={`mq-ay${isPlay ? ' mq-play' : isSel ? ' mq-sel' : hl ? ' mq-hl' : ''}`} onClick={() => sg[0] && klikAyat(sg[0], sg[1], isSel)}>{sg[2]}</span>
                             </span>
                           );
                         })}

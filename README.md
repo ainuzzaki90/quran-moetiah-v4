@@ -174,3 +174,9 @@ juga Singapore (Supabase -> Project Settings -> General). Jika berbeda, ubah "re
 - Laptop: form di kiri, mushaf di kanan. HP: tab "Form" / "Mushaf" (isian tidak hilang saat berpindah tab).
 - Ketuk ayat awal lalu ayat akhir -> mengisi Surah/Ayat Awal & Akhir di form; isian manual tetap bisa, dan mushaf mengikuti perubahan form.
 - Posisi awal mushaf = surah terakhir siswa (atau An-Nas jika belum ada). Tanpa SQL baru.
+
+## Audio murottal
+- Audio diputar per ayat (streaming) dari EveryAyah (cadangan: Islamic Network); file audio tidak disimpan di aplikasi, butuh internet.
+- Menu Mushaf Digital: putar/jeda/berhenti, qari (Alafasy, Al-Husary Muallim), ulang ayat 1/3/5/10x, ulang rentang sorotan, kecepatan 0.75/1/1.25x; ayat yang dibaca tersorot hijau dan halaman membalik otomatis.
+- Halaman Setoran (panel mushaf): hanya tombol putar/jeda/berhenti (memutar rentang yang dipilih).
+- Kode: src/lib/ayah-audio.ts (daftar qari & alamat sumber ada di QARIS). Tanpa SQL.

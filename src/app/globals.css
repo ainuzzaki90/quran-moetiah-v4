@@ -412,8 +412,8 @@
 
   /* ===== Mushaf 15 baris ===== */
   @font-face{font-family:"KFGQPC Hafs";src:url("/mushaf/UthmanicHafs-v-3.0.ttf") format("truetype");font-display:swap;}
-  :root{--mq-paper:#fbf7ec;--mq-ink:#1d1a14;--mq-gold:#b08a2e;--mq-head:linear-gradient(#f3ead0,#efe3bd);--mq-head-ink:#17325c;--mq-hl:#fde68a;--mq-sel:#cfe3fb;--mq-muted:#7a6a3a;}
-  html[data-theme="dark"]{--mq-paper:#1b222b;--mq-ink:#ece6d4;--mq-gold:#c9a24a;--mq-head:linear-gradient(#2a303a,#252a33);--mq-head-ink:#d9e6f7;--mq-hl:#6b5714;--mq-sel:#23456f;--mq-muted:#b9a974;}
+  :root{--mq-paper:#fbf7ec;--mq-ink:#1d1a14;--mq-gold:#b08a2e;--mq-head:linear-gradient(#f3ead0,#efe3bd);--mq-head-ink:#17325c;--mq-hl:#fde68a;--mq-sel:#cfe3fb;--mq-muted:#7a6a3a;--mq-play:#bbf7d0;}
+  html[data-theme="dark"]{--mq-paper:#1b222b;--mq-ink:#ece6d4;--mq-gold:#c9a24a;--mq-head:linear-gradient(#2a303a,#252a33);--mq-head-ink:#d9e6f7;--mq-hl:#6b5714;--mq-sel:#23456f;--mq-muted:#b9a974;--mq-play:#14532d;}
   .mq-scroll{overflow-x:auto;padding:4px 2px 10px;direction:rtl;}
   .mq-box{margin:0 auto;background:var(--mq-paper);color:var(--mq-ink);border:2px solid var(--mq-gold);outline:1px solid var(--mq-gold);outline-offset:3px;border-radius:6px;padding:14px;box-sizing:border-box;direction:rtl;}
   .mq-ln{font-family:"KFGQPC Hafs",serif;white-space:normal;text-align:justify;text-align-last:justify;overflow:hidden;}
@@ -423,6 +423,7 @@
   .mq-ay{cursor:pointer;border-radius:4px;}
   .mq-ay.mq-hl{background:var(--mq-hl);}
   .mq-ay.mq-sel{background:var(--mq-sel);}
+  .mq-ay.mq-play{background:var(--mq-play);}
   .mq-foot{direction:ltr;text-align:center;font-size:12px;color:var(--mq-muted);margin-top:6px;}
   .mq-probe{position:absolute;visibility:hidden;white-space:nowrap;font-family:"KFGQPC Hafs",serif;font-size:100px;left:-9999px;top:0;}
   .mq-peta-row{display:flex;align-items:center;gap:6px;margin:5px 0;flex-wrap:wrap;}
