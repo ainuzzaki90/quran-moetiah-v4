@@ -72,10 +72,13 @@
   .tf-hamburger{background:rgba(255,255,255,.15);border:none;color:#fff;font-size:20px;width:38px;height:38px;
     border-radius:8px;cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0;}
   .tf-hamburger:hover{background:rgba(255,255,255,.28);}
-  .tf-user{display:flex;align-items:center;gap:10px;font-size:13px;flex-shrink:0;margin-left:auto;}
+  .tf-user{display:flex;align-items:center;gap:8px;font-size:13px;flex:1;min-width:0;justify-content:flex-end;}
   .tf-user button{background:rgba(0,0,0,.2);border:none;color:#fff;padding:6px 12px;border-radius:8px;cursor:pointer;}
-  .tf-user span{display:none;}
-  @media(min-width:640px){ .tf-user span{display:inline;} }
+  .tf-user-name{display:flex;flex-direction:column;align-items:flex-end;min-width:0;line-height:1.2;margin-right:4px;}
+  .tf-user-name b{font-size:13px;font-weight:600;max-width:100%;overflow:hidden;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;text-align:right;overflow-wrap:anywhere;}
+  .tf-user-name small{font-size:11px;opacity:.8;white-space:nowrap;}
+  .tf-user button{flex-shrink:0;}
+  @media(max-width:480px){ .tf-topbar{padding:10px 12px;gap:8px;} .tf-user button{padding:6px 9px;} .tf-user-name b{max-width:34vw;} }
 
   /* ===== SIDEBAR (drawer di mobile, full-height persistent di desktop) ===== */
   .tf-sidebar-overlay{position:fixed;inset:0;background:rgba(8,30,45,.45);opacity:0;visibility:hidden;
@@ -444,4 +447,21 @@
   @media(min-width:1100px){
     .tf-split-on{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:16px;align-items:start;}
     .tf-split-on .tf-split-mushaf{display:block;position:sticky;top:12px;max-height:calc(100vh - 24px);overflow-y:auto;}
+  }
+
+  /* ===== Tabel yang tidak muat: otomatis tampil sebagai kartu (TableLabels.tsx) ===== */
+  @media screen{
+    .tf-table-wrap:has(> table.tf-cards){overflow-x:visible;}
+    table.tf-table.tf-cards, table.tf-table.tf-cards tbody, table.tf-table.tf-cards tr, table.tf-table.tf-cards td{display:block;width:100%;box-sizing:border-box;}
+    table.tf-table.tf-cards thead{display:none;}
+    table.tf-table.tf-cards tr{border:1px solid var(--border);border-radius:10px;margin-bottom:10px;padding:4px 12px;background:var(--surface);}
+    table.tf-table.tf-cards tr:hover td{background:transparent;}
+    table.tf-table.tf-cards td{display:flex;justify-content:space-between;align-items:flex-start;gap:12px;padding:7px 0;
+      border-bottom:1px dashed var(--border);text-align:right;overflow-wrap:anywhere;word-break:break-word;}
+    table.tf-table.tf-cards tr td:last-child{border-bottom:none;}
+    table.tf-table.tf-cards td::before{content:attr(data-label);font-weight:600;color:var(--text-muted);text-align:left;flex:0 0 40%;max-width:40%;}
+    table.tf-table.tf-cards td:not([data-label])::before, table.tf-table.tf-cards td[data-label=""]::before{display:none;}
+    table.tf-table.tf-cards td[data-label=""]{justify-content:flex-end;flex-wrap:wrap;}
+    table.tf-table.tf-cards td[colspan]{display:block;text-align:center;}
+    table.tf-table.tf-cards td select, table.tf-table.tf-cards td input:not([type=checkbox]):not([type=radio]){max-width:60%;}
   }

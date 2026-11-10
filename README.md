@@ -180,3 +180,7 @@ juga Singapore (Supabase -> Project Settings -> General). Jika berbeda, ubah "re
 - Menu Mushaf Digital: putar/jeda/berhenti, qari (Alafasy, Al-Husary Muallim), ulang ayat 1/3/5/10x, ulang rentang sorotan, kecepatan 0.75/1/1.25x; ayat yang dibaca tersorot hijau dan halaman membalik otomatis.
 - Halaman Setoran (panel mushaf): hanya tombol putar/jeda/berhenti (memutar rentang yang dipilih).
 - Kode: src/lib/ayah-audio.ts (daftar qari & alamat sumber ada di QARIS). Tanpa SQL.
+
+## Tampilan HP/tablet
+- Header selalu menampilkan nama akun + peran (nama panjang dibungkus 2 baris).
+- Tabel yang tidak muat di lebarnya otomatis tampil sebagai kartu (judul kolom di kiri, isi di kanan) — lihat `src/components/TableLabels.tsx` dan CSS `.tf-cards`. Di mode kartu, pengurutan lewat klik header tidak tersedia (tabel normal di layar lebar tetap bisa).

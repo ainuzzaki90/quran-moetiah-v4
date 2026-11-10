@@ -6,6 +6,7 @@ import { MENU, Role } from '@/lib/menu';
 import Login from './Login';
 import Sidebar from './Sidebar';
 import Topbar from './Topbar';
+import TableLabels from './TableLabels';
 import DashboardView from './views/Dashboard';
 import SantriView from './views/Santri';
 import KelasView from './views/Kelas';
@@ -88,6 +89,7 @@ export default function AppShell() {
         onSelect={(k) => { if (k === 'mushaf') setMushafTarget(null); setView(k); if (!isDesktop) setSidebarOpen(false); }}
       />
       <div className="tf-right-col">
+        <TableLabels />
         <Topbar user={user} onToggleSidebar={() => setSidebarOpen((v) => !v)} onLogout={handleLogout} />
         <div className="tf-content">
           {view === 'dashboard' && <DashboardView user={user} />}

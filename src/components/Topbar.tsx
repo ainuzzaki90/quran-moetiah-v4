@@ -37,7 +37,7 @@ export default function Topbar({
     <div className="tf-topbar">
       <button className="tf-hamburger" onClick={onToggleSidebar} aria-label="Buka menu">☰</button>
       <div className="tf-user">
-        <span>{user.nama} ({ROLE_LABELS[user.role]})</span>
+        <span className="tf-user-name"><b>{user.nama}</b><small>{ROLE_LABELS[user.role]}</small></span>
         <button onClick={toggleTheme} aria-label="Ganti tema gelap/terang" title="Ganti tema">
           {dark ? '☀️' : '🌙'}
         </button>
