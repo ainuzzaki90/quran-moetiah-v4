@@ -22,12 +22,16 @@ export default function TableLabels() {
     function host(tb: HTMLTableElement): HTMLElement {
       return (tb.closest('.tf-table-wrap') as HTMLElement) || (tb.parentElement as HTMLElement);
     }
+    // tempat bar dipasang: tepat di atas pembungkus tabel, atau di atas tabel itu sendiri (di dalam isi panel)
+    function anchor(tb: HTMLTableElement): HTMLElement {
+      return (tb.closest('.tf-table-wrap') as HTMLElement) || tb;
+    }
 
     function proses() {
       const pref = getPref();
       // bersihkan bar yatim
       bars.forEach((tb, bar) => {
-        if (!tb.isConnected || bar.nextElementSibling !== host(tb)) { bar.remove(); bars.delete(bar); }
+        if (!tb.isConnected || bar.nextElementSibling !== anchor(tb)) { bar.remove(); bars.delete(bar); }
       });
       const tabel = Array.from(document.querySelectorAll<HTMLTableElement>('table.tf-table'));
 
@@ -102,7 +106,7 @@ export default function TableLabels() {
         const sig = [aktif, pref ?? '', sortable.map((x) => bersih(x.t.textContent || '')).join('|'), aktifSort?.i ?? '', arah].join('#');
         if (!bar) {
           bar = document.createElement('div'); bar.className = 'tf-viewbar';
-          h.parentElement!.insertBefore(bar, h);
+          const a = anchor(tb); a.parentElement!.insertBefore(bar, a);
           bars.set(bar, tb);
         }
         if (bar.dataset.sig === sig) return;
