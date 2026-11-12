@@ -2,6 +2,7 @@ import { NextRequest } from 'next/server';
 import { requireAuth, hashPassword } from '@/lib/auth';
 import { getSupabaseAdmin } from '@/lib/supabase';
 import { getToken, jsonOk, withErrorHandling } from '@/lib/api-helpers';
+import { logAudit } from '@/lib/audit';
 
 const VALID_ROLES = ['admin', 'penyimak', 'santri', 'tamu'];
 
@@ -41,5 +42,6 @@ export const POST = withErrorHandling(async (req: NextRequest) => {
     .select('id, nama, username, role, kelas_id, status')
     .single();
   if (error) throw new Error(error.message);
+  await logAudit(session, { aksi: 'pengguna.tambah', objek_id: row.id, ringkasan: `${row.nama} (${row.username}) · peran ${row.role}`, sesudah: row });
   return jsonOk({ data: row });
 });

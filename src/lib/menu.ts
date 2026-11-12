@@ -23,4 +23,5 @@ export const MENU: { key: string; label: string; roles: Role[] }[] = [
   { key: 'mushaf', label: 'Mushaf Digital', roles: ['admin', 'penyimak', 'santri', 'tamu'] },
   { key: 'pengaturan', label: 'Pengaturan Penilaian', roles: ['admin'] },
   { key: 'users', label: 'Pengguna', roles: ['admin'] },
+  { key: 'audit', label: 'Audit Log', roles: ['admin'] },
 ];

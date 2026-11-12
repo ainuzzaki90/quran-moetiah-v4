@@ -3,6 +3,7 @@ import { requireAuth } from '@/lib/auth';
 import { getSupabaseAdmin } from '@/lib/supabase';
 import { getToken, jsonOk, withErrorHandling } from '@/lib/api-helpers';
 import { getPengaturan } from '@/lib/pengaturan';
+import { logAudit, bedaField } from '@/lib/audit';
 
 // GET -> semua role boleh baca (form setoran butuh bobot untuk hitung nilai langsung)
 export const GET = withErrorHandling(async (req: NextRequest) => {
@@ -16,6 +17,7 @@ export const PUT = withErrorHandling(async (req: NextRequest) => {
   if (session.role !== 'admin') throw new Error('Hanya admin yang bisa mengubah pengaturan');
   const p = await req.json();
   const db = getSupabaseAdmin();
+  const lama = await getPengaturan();
 
   if (p.bobot) {
     const b = {
@@ -53,6 +55,12 @@ export const PUT = withErrorHandling(async (req: NextRequest) => {
     if (Object.values(sy).some((v) => isNaN(v) || v < 0 || v > 100) || sy.jumlah_setoran < 1) throw new Error('Syarat ujian tidak valid (nilai 0-100, jumlah setoran minimal 1)');
     const { error } = await db.from('pengaturan').upsert({ kunci: 'syarat_ujian', nilai: sy, updated_at: new Date().toISOString() });
     if (error) throw new Error(error.message);
+  }
+  const baru = await getPengaturan();
+  const d = bedaField(lama as any, baru as any, ['bobot', 'poin_per_halaman', 'halaman_per_jilid', 'syarat_ujian']);
+  if (d.berubah) {
+    const nama: Record<string, string> = { bobot: 'Bobot penilaian', poin_per_halaman: 'Poin per halaman', halaman_per_jilid: 'Halaman per jilid', syarat_ujian: 'Syarat ujian' };
+    await logAudit(session, { aksi: 'pengaturan.ubah', ringkasan: `Diubah: ${Object.keys(d.sebelum).map((k) => nama[k] || k).join(', ')}`, sebelum: d.sebelum, sesudah: d.sesudah });
   }
   return jsonOk();
 });

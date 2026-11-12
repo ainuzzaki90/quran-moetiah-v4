@@ -184,3 +184,9 @@ juga Singapore (Supabase -> Project Settings -> General). Jika berbeda, ubah "re
 ## Tampilan HP/tablet
 - Header selalu menampilkan nama akun + peran (nama panjang dibungkus 2 baris).
 - Tabel yang tidak muat di lebarnya otomatis tampil sebagai kartu (judul kolom di kiri, isi di kanan) — lihat `src/components/TableLabels.tsx` dan CSS `.tf-cards`. Di atas tiap tabel (4 kolom ke atas) ada pilihan "☰ Kartu | ▦ Tabel" (satu pilihan untuk semua tabel, diingat per perangkat di localStorage `mq_table_view`; belum memilih = otomatis). Mode Kartu punya kotak "Urutkan"; mode Tabel bisa digeser dengan kolom nama menempel di kiri.
+
+## Audit Log (versi ringan, admin saja)
+- Menu "Audit Log": mencatat setoran (tambah/ubah/hapus, dengan nilai lama→baru), kenaikan jilid (catat/batal), perubahan Pengaturan Penilaian, dan akun pengguna (tambah/ubah/reset password/hapus). Password tidak pernah dicatat.
+- Filter tanggal, pelaku, jenis aksi, dan pencarian siswa; ekspor Excel; catatan > 12 bulan dihapus otomatis saat admin membuka menu.
+- WAJIB jalankan sekali `supabase/migration-audit-log.sql` di Supabase SQL Editor. Sebelum SQL dijalankan, aplikasi tetap normal (pencatatan dilewati diam-diam).
+- Perbaikan keamanan: mengubah setoran (PUT) kini hanya untuk admin/penyimak.

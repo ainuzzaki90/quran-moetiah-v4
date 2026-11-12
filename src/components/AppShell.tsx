@@ -19,6 +19,7 @@ import RekapView from './views/Rekap';
 import MushafView from './views/Mushaf';
 import PengaturanView from './views/Pengaturan';
 import UsersView from './views/Users';
+import AuditLogView from './views/AuditLog';
 import KenaikanJilidView from './views/KenaikanJilid';
 import type { MushafTarget } from '@/lib/mushaf-target';
 
@@ -105,6 +106,7 @@ export default function AppShell() {
           {view === 'mushaf' && <MushafView user={user} target={mushafTarget} />}
           {view === 'pengaturan' && <PengaturanView />}
           {view === 'users' && <UsersView />}
+          {view === 'audit' && <AuditLogView />}
         </div>
         <footer className="tf-footer">© {new Date().getFullYear()} SMP Islam Moetiah — dikembangkan oleh Abdal Ainuz Zaki, B.A.</footer>
       </div>

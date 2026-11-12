@@ -7,6 +7,7 @@ import { calcPredikat, hitungNilaiAspek, JENIS_PAKAI_ASPEK, Bobot } from '@/lib/
 import { getPengaturan } from '@/lib/pengaturan';
 import { parseHalaqahParam, getDefaultHalaqahId } from '@/lib/halaqah';
 import { enrichSetoranRows } from '@/lib/enrich';
+import { logAudit, namaSiswa, ringkasSetoran } from '@/lib/audit';
 
 // GET /api/setoran?santri_id=
 export const GET = withErrorHandling(async (req: NextRequest) => {
@@ -100,11 +101,14 @@ export const POST = withErrorHandling(async (req: NextRequest) => {
     );
     const { data, error } = await db.from('setoran').insert(rows).select();
     if (error) throw new Error(error.message);
+    const nm = await namaSiswa(payload.santri_id);
+    await logAudit(session, data.map((r: any) => ({ aksi: 'setoran.tambah', objek_id: r.id, santri_id: Number(payload.santri_id), santri_nama: nm, ringkasan: ringkasSetoran(r), sesudah: r })));
     return jsonOk({ count: data.length });
   }
 
   const row = buildSetoranRow(session, payload.tanggal, payload.santri_id, kelasId, halaqahId, payload, bobot);
   const { data, error } = await db.from('setoran').insert(row).select().single();
   if (error) throw new Error(error.message);
+  await logAudit(session, { aksi: 'setoran.tambah', objek_id: data.id, santri_id: Number(payload.santri_id), santri_nama: await namaSiswa(payload.santri_id), ringkasan: ringkasSetoran(data), sesudah: data });
   return jsonOk({ data });
 });

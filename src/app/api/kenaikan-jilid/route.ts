@@ -2,6 +2,7 @@ import { NextRequest } from 'next/server';
 import { requireAuth } from '@/lib/auth';
 import { getSupabaseAdmin } from '@/lib/supabase';
 import { getToken, jsonOk, withErrorHandling } from '@/lib/api-helpers';
+import { logAudit } from '@/lib/audit';
 import { fetchAll } from '@/lib/db-utils';
 import { getPengaturan } from '@/lib/pengaturan';
 import { hitungKesiapan } from '@/lib/ummi';
@@ -140,6 +141,9 @@ export const POST = withErrorHandling(async (req: NextRequest) => {
     });
     if (error) throw new Error(/relation|does not exist|schema cache/i.test(error.message) ? TABEL_HILANG : error.message);
     if (p.hasil === 'lulus') await db.from('santri').update({ level_ummi: ke }).eq('id', s.id);
+    await logAudit(session, { aksi: 'kenaikan.catat', santri_id: s.id, santri_nama: s.nama,
+      ringkasan: `${s.level_ummi} → ${ke}: ${p.hasil === 'lulus' ? 'LULUS' : 'Belum lulus'}${nilai !== null ? `, nilai ujian ${nilai}` : ''}${p.penguji ? `, penguji ${p.penguji}` : ''}`,
+      sesudah: { dari: s.level_ummi, ke, hasil: p.hasil, nilai_ujian: nilai, penguji: p.penguji || null, catatan: p.catatan || null } });
     return jsonOk({ level_baru: p.hasil === 'lulus' ? ke : null });
   }
 
@@ -158,6 +162,9 @@ export const POST = withErrorHandling(async (req: NextRequest) => {
       await db.from('santri').update({ level_ummi: r.dari_jilid }).eq('id', r.santri_id);
       dikembalikan = true;
     }
+    await logAudit(session, { aksi: 'kenaikan.batal', objek_id: r.id, santri_id: r.santri_id, santri_nama: s.nama,
+      ringkasan: `Pembatalan catatan ${r.dari_jilid} → ${r.ke_jilid} (${r.status})${dikembalikan ? `; level dikembalikan ke ${r.dari_jilid}` : ''}`,
+      sebelum: { status: r.status, dari: r.dari_jilid, ke: r.ke_jilid, nilai_ujian: r.nilai_ujian }, sesudah: { status: 'dibatalkan', level_dikembalikan: dikembalikan } });
     return jsonOk({ level_dikembalikan: dikembalikan });
   }
 
