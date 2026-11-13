@@ -196,3 +196,9 @@ juga Singapore (Supabase -> Project Settings -> General). Jika berbeda, ubah "re
 - Pengaturan audio dilipat (tombol ⚙ Audio), petunjuk di tombol ℹ️.
 - Geser jari di HP (kanan = berikutnya, kiri = sebelumnya; nonaktif saat diperbesar).
 - Cari ayat (mis. 2:255), tombol "↩ Terakhir dibaca", nama surah di bawah halaman.
+
+### Navigasi halaman Mushaf (pengganti bilah bawah)
+Bilah bawah dihapus. Diganti tombol bulat ‹ › melayang (laptop: tengah kiri-kanan layar; HP: pojok bawah, transparan). Tidak tampil di mode Setoran (tertanam). Bisa dimatikan lewat ℹ️ → "Tombol ‹ › melayang" (tersimpan per perangkat, kunci `navbtn`).
+
+### Pencarian terpadu Mushaf (13 Nov 2026)
+Kolom "Cari" di Mushaf Digital menerima: `2:255`, nama surah (`baqarah`, `kahfi`, `yaasiin`, `surat yusuf`), nama + ayat (`baqarah 255`), `ayat kursi`, `3 qul`, `juz 29`, `h 582`, dan kata/kalimat Arab (`بنعمة ربك`, dengan/tanpa harakat). Logika di `src/lib/mushaf-search.ts` (indeks dibuat dari data mushaf di peramban, tanpa data tambahan). Pencarian Arab mengabaikan harakat, alif, dan perbedaan ة/ه, ى/ي, serta ejaan Utsmani وٰ (mis. الصلاة cocok dengan الصلوة).

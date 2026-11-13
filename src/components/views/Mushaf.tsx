@@ -6,6 +6,7 @@ import { api } from '@/lib/api-client';
 import type { MushafTarget } from '@/lib/mushaf-target';
 import { useAyahAudio, gidOf, fromGid, QARIS, TOTAL_AYAT } from '@/lib/ayah-audio';
 import { PAGE_FIRST_AYAH_ID } from '@/lib/mushaf-pages';
+import { buildIndex, cari as cariMushaf, type Hasil } from '@/lib/mushaf-search';
 import type { User } from '../AppShell';
 
 type Seg = [number, number, string]; // [surah, ayat, teks]
@@ -56,8 +57,12 @@ export default function MushafView({ user, target, embedded, onPick, pickHint }:
   const [pickStart, setPickStart] = useState<number | null>(null);
   const [audioOpen, setAudioOpen] = useState(false);
   const [infoOpen, setInfoOpen] = useState(false);
+  const [navBtn, setNavBtn] = useState(true); // tombol ‹ › melayang (disimpan per perangkat)
+  useEffect(() => { if (lsGet('navbtn') === '0') setNavBtn(false); }, []);
+  const ubahNavBtn = () => { const v = !navBtn; setNavBtn(v); lsSet('navbtn', v ? '1' : '0'); };
   const [cari, setCari] = useState('');
-  const [cariErr, setCariErr] = useState('');
+  const [cariOpen, setCariOpen] = useState(false);
+  const [cariLimit, setCariLimit] = useState(30);
   const touchRef = useRef<{ x: number; y: number; t: number } | null>(null);
   // halaman terakhir dibaca saat komponen dibuka (sebelum tertimpa lompatan dari layar lain)
   const [lastAtOpen] = useState(() => Number(lsGet(`last_${user.id}`)) || 0);
@@ -211,16 +216,17 @@ export default function MushafView({ user, target, embedded, onPick, pickHint }:
   }
   const [playS, playA] = audio.curGid ? fromGid(audio.curGid) : [0, 0];
 
-  function cariAyat() {
-    const m = cari.trim().match(/^(\d{1,3})\s*[:.,\s-]\s*(\d{1,3})$/);
-    if (!m) { setCariErr('Tulis seperti 2:255'); return; }
-    const sn = Number(m[1]), an = Number(m[2]);
-    if (sn < 1 || sn > 114) { setCariErr('Surah 1–114'); return; }
-    if (an < 1 || an > SURAH_PAGES[sn - 1][3]) { setCariErr(`${SURAH_PAGES[sn - 1][1]} hanya ${SURAH_PAGES[sn - 1][3]} ayat`); return; }
-    const p = ayahPage.get(key(sn, an));
-    if (!p) { setCariErr('Ayat tidak ditemukan'); return; }
-    setCariErr(''); pindah(p);
-    if (!onPick) setSel({ s: sn, a: an });
+  const cariIdx = useMemo(() => (data ? buildIndex(data) : null), [data]);
+  const cariRes = useMemo(() => (cariIdx && cari.trim() ? cariMushaf(cariIdx, cari) : null), [cariIdx, cari]);
+  function pilihHasil(h: Hasil) {
+    pindah(h.page);
+    if (h.s && h.a && h.kind !== 'surah' && !onPick) setSel({ s: h.s, a: h.a });
+    setCariOpen(false);
+  }
+  function cariEnter() {
+    if (!cariRes || !cariRes.hasil.length) { setCariOpen(true); return; }
+    if (cariRes.hasil.length === 1 || cariRes.hasil[0].kind !== 'teks') pilihHasil(cariRes.hasil[0]);
+    else setCariOpen(true);
   }
   function onTouchStart(e: React.TouchEvent) { const t = e.touches[0]; touchRef.current = { x: t.clientX, y: t.clientY, t: Date.now() }; }
   function onTouchEnd(e: React.TouchEvent) {
@@ -296,12 +302,28 @@ export default function MushafView({ user, target, embedded, onPick, pickHint }:
                   {data.juzStart.map((p, i) => <option key={i} value={p}>Juz {i + 1} (hal. {p})</option>)}
                 </select>
                 <span style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
-                  <input className="mq-cari" value={cari} placeholder="Cari ayat 2:255" inputMode="text"
-                    onChange={(e) => { setCari(e.target.value); setCariErr(''); }} onKeyDown={(e) => e.key === 'Enter' && cariAyat()} />
-                  <button className="tf-btn-sm" onClick={cariAyat}>Cari</button>
+                  <input className="mq-cari" value={cari} placeholder="Cari: 2:255 · baqarah · kata Arab" inputMode="text" autoComplete="off"
+                    onChange={(e) => { setCari(e.target.value); setCariOpen(true); setCariLimit(30); }} onFocus={() => cari.trim() && setCariOpen(true)}
+                    onKeyDown={(e) => { if (e.key === 'Enter') cariEnter(); if (e.key === 'Escape') setCariOpen(false); }} />
+                  <button className="tf-btn-sm" onClick={cariEnter}>Cari</button>
                 </span>
               </div>
-              {cariErr && <div className="tf-error" style={{ marginBottom: 8 }}>{cariErr}</div>}
+              {cariOpen && cariRes && (
+                <div className="mq-res">
+                  <div className="mq-res-head">
+                    <span>{cariRes.hasil.length ? (cariRes.hasil[0].kind === 'teks' ? `${cariRes.total} ayat mengandung kata itu` : 'Hasil pencarian') : (cariRes.pesan || 'Tidak ditemukan')}</span>
+                    <button className="tf-btn-sm" onClick={() => setCariOpen(false)}>✕ Tutup</button>
+                  </div>
+                  {cariRes.hasil.slice(0, cariLimit).map((h) => (
+                    <button key={h.id} className="mq-res-i" onClick={() => pilihHasil(h)}>
+                      <span className="mq-res-t"><b>{h.label}</b>{h.sub ? <small> · {h.sub}</small> : null}</span>
+                      {h.arab && <span className="mq-res-ar" lang="ar" dir="rtl">{h.arab.before}<mark>{h.arab.hit}</mark>{h.arab.after}</span>}
+                    </button>
+                  ))}
+                  {cariRes.hasil.length > cariLimit && <button className="tf-btn-sm" style={{ margin: 8 }} onClick={() => setCariLimit(cariLimit + 30)}>Tampilkan lebih banyak ({cariRes.hasil.length - cariLimit} lagi)</button>}
+                  {cariRes.total > cariRes.hasil.length && <div className="tf-mushaf-note" style={{ padding: '4px 10px 8px' }}>Menampilkan {cariRes.hasil.length} pertama dari {cariRes.total}. Tambahkan kata agar lebih spesifik.</div>}
+                </div>
+              )}
               <div className="tf-mushaf-toolbar" style={{ marginBottom: 8 }}>
                 <button className="tf-btn-sm" onClick={() => pindah(page - 1)} disabled={page <= 1}>‹ Sebelumnya</button>
                 <span>
@@ -352,6 +374,11 @@ export default function MushafView({ user, target, embedded, onPick, pickHint }:
                 <div className="tf-mushaf-note" style={{ marginBottom: 8 }}>
                   Ketuk ayat untuk memilihnya. Audio dimulai dari tombol ▶ (dari ayat terpilih, rentang sorotan, atau awal halaman) dan memerlukan internet.
                   Di HP, geser ke kanan untuk halaman berikutnya dan ke kiri untuk sebelumnya (saat tidak diperbesar). Di laptop bisa memakai tombol panah kiri/kanan.
+                  {!embedded && (
+                    <div style={{ marginTop: 6 }}>
+                      Tombol ‹ › melayang: <button className={navBtn ? 'tf-btn-sm tf-btn' : 'tf-btn-sm'} onClick={ubahNavBtn}>{navBtn ? 'Hidup' : 'Mati'}</button>
+                    </div>
+                  )}
                 </div>
               )}
 
@@ -398,12 +425,12 @@ export default function MushafView({ user, target, embedded, onPick, pickHint }:
               </div>
               <span ref={probeRef} className="mq-probe" aria-hidden="true" />
               {zoomIdx > 0 && <div className="tf-mushaf-note">Mode diperbesar: geser ke samping untuk membaca seluruh baris.</div>}
-              <div className="mq-bottombar">
-                <button className="tf-btn-sm" onClick={() => pindah(page - 1)} disabled={page <= 1}>‹ Sebelumnya</button>
-                <button className={audio.playing ? 'tf-btn-sm tf-btn' : 'tf-btn-sm'} onClick={tombolPutar} title="Putar / jeda audio">{audio.playing ? '⏸' : '▶'}</button>
-                <span className="mq-bb-info">Hal. {page} / 604 · Juz {juzNow}</span>
-                <button className="tf-btn-sm" onClick={() => pindah(page + 1)} disabled={page >= 604}>Berikutnya ›</button>
-              </div>
+              {!embedded && navBtn && (
+                <>
+                  <button className="mq-fab mq-fab-l" onClick={() => pindah(page - 1)} disabled={page <= 1} aria-label="Halaman sebelumnya" title="Halaman sebelumnya">‹</button>
+                  <button className="mq-fab mq-fab-r" onClick={() => pindah(page + 1)} disabled={page >= 604} aria-label="Halaman berikutnya" title="Halaman berikutnya">›</button>
+                </>
+              )}
             </>
           )}
 

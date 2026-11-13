@@ -485,9 +485,22 @@
 
   /* Mushaf: bilah navigasi bawah yang menempel + pencarian ayat */
   .mq-panel{overflow:visible;}
-  .mq-bottombar{position:sticky;bottom:0;z-index:6;display:flex;gap:8px;align-items:center;justify-content:space-between;
-    background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:8px 10px;margin-top:8px;box-shadow:0 -4px 14px rgba(0,0,0,.08);}
-  .mq-bottombar button{width:auto;white-space:nowrap;}
-  .mq-bb-info{font-size:12.5px;color:var(--text-muted);text-align:center;flex:1;min-width:0;}
-  .tf-mushaf-toolbar input.mq-cari{width:150px;text-align:left;padding:8px 10px;}
-  @media(max-width:520px){ .mq-bb-info{display:none;} .mq-bottombar{justify-content:space-between;} .tf-mushaf-toolbar input.mq-cari{width:130px;} }
+  /* tombol halaman melayang: laptop di tengah kiri-kanan, HP bulat kecil di pojok bawah */
+  .mq-fab{position:fixed;z-index:6;width:44px;height:44px;border-radius:50%;border:1px solid var(--border);background:var(--surface);color:var(--text);
+    font-size:26px;line-height:1;padding:0 0 3px;display:flex;align-items:center;justify-content:center;cursor:pointer;opacity:.5;
+    box-shadow:0 2px 8px rgba(0,0,0,.18);transition:opacity .15s;-webkit-tap-highlight-color:transparent;}
+  .mq-fab:hover,.mq-fab:active,.mq-fab:focus-visible{opacity:1;}
+  .mq-fab:disabled{opacity:.18;cursor:default;}
+  .mq-fab-l{left:10px;bottom:70px;} .mq-fab-r{right:10px;bottom:70px;}
+  @media(min-width:900px){ .mq-fab{top:50%;bottom:auto;transform:translateY(-50%);width:48px;height:64px;border-radius:14px;} .mq-fab-l{left:18px;} .mq-fab-r{right:18px;} }
+  .tf-mushaf-toolbar input.mq-cari{width:230px;text-align:left;padding:8px 10px;}
+  @media(max-width:520px){ .tf-mushaf-toolbar input.mq-cari{width:100%;} .tf-mushaf-toolbar > span:has(.mq-cari){flex:1 1 100%;} .tf-mushaf-toolbar > span:has(.mq-cari) input{flex:1;} }
+
+  /* hasil pencarian Mushaf */
+  .mq-res{border:1px solid var(--border);background:var(--surface);border-radius:12px;margin-bottom:10px;max-height:55vh;overflow-y:auto;box-shadow:0 4px 14px rgba(0,0,0,.08);}
+  .mq-res-head{display:flex;justify-content:space-between;align-items:center;gap:8px;padding:8px 10px;font-size:13px;color:var(--text-muted);border-bottom:1px solid var(--border);position:sticky;top:0;background:var(--surface);z-index:1;}
+  .mq-res-i{display:flex;flex-direction:column;gap:4px;align-items:stretch;width:100%;text-align:left;background:transparent;border:0;border-bottom:1px solid var(--border);padding:9px 12px;cursor:pointer;color:var(--text);font:inherit;}
+  .mq-res-i:hover,.mq-res-i:focus-visible{background:rgba(127,127,127,.12);}
+  .mq-res-t small{color:var(--text-muted);font-size:12px;}
+  .mq-res-ar{font-family:"KFGQPC Hafs",serif;font-size:21px;line-height:1.9;text-align:right;}
+  .mq-res-ar mark{background:#fde68a;color:inherit;border-radius:4px;padding:0 2px;}
