@@ -54,6 +54,13 @@ export default function MushafView({ user, target, embedded, onPick, pickHint }:
   const probeRef = useRef<HTMLSpanElement>(null);
   const [petaSantri, setPetaSantri] = useState<string>('');
   const [pickStart, setPickStart] = useState<number | null>(null);
+  const [audioOpen, setAudioOpen] = useState(false);
+  const [infoOpen, setInfoOpen] = useState(false);
+  const [cari, setCari] = useState('');
+  const [cariErr, setCariErr] = useState('');
+  const touchRef = useRef<{ x: number; y: number; t: number } | null>(null);
+  // halaman terakhir dibaca saat komponen dibuka (sebelum tertimpa lompatan dari layar lain)
+  const [lastAtOpen] = useState(() => Number(lsGet(`last_${user.id}`)) || 0);
   const pickedRef = useRef('');
   const [ayatRep, setAyatRep] = useState(1);
   const [rangeRep, setRangeRep] = useState(1);
@@ -90,7 +97,18 @@ export default function MushafView({ user, target, embedded, onPick, pickHint }:
     lsSet(`last_${user.id}`, String(n));
   }, [user.id]);
 
-  pageRef.current = page; ayahPageRef.current = ayahPage; goPageRef.current = goPage;
+  // pindah halaman oleh pengguna/audio: kembali ke awal halaman mushaf agar tidak "tertinggal" di bawah
+  const pindah = useCallback((p: number) => {
+    goPage(p);
+    requestAnimationFrame(() => {
+      const el = wrapRef.current; if (!el) return;
+      const dalamPanel = el.closest('.tf-split-mushaf') as HTMLElement | null;
+      if (dalamPanel) dalamPanel.scrollTo({ top: 0 });
+      else el.scrollIntoView({ block: 'start' });
+    });
+  }, [goPage]);
+
+  pageRef.current = page; ayahPageRef.current = ayahPage; goPageRef.current = pindah;
   useEffect(() => { if (tab === 'peta') audio.stop(); /* eslint-disable-next-line */ }, [tab]);
 
   // ---- halaman awal: target dari layar lain, atau terakhir dibaca ----
@@ -163,12 +181,12 @@ export default function MushafView({ user, target, embedded, onPick, pickHint }:
     function onKey(e: KeyboardEvent) {
       const tag = (document.activeElement?.tagName || '').toLowerCase();
       if (tab !== 'baca' || tag === 'input' || tag === 'select' || tag === 'textarea') return;
-      if (e.key === 'ArrowLeft') goPage(page + 1);
-      if (e.key === 'ArrowRight') goPage(page - 1);
+      if (e.key === 'ArrowLeft') pindah(page + 1);
+      if (e.key === 'ArrowRight') pindah(page - 1);
     }
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
-  }, [tab, page, goPage]);
+  }, [tab, page, pindah]);
 
   function ubahZoom(d: number) {
     const n = Math.min(ZOOMS.length - 1, Math.max(0, zoomIdx + d));
@@ -192,6 +210,35 @@ export default function MushafView({ user, target, embedded, onPick, pickHint }:
     else mulaiPutar();
   }
   const [playS, playA] = audio.curGid ? fromGid(audio.curGid) : [0, 0];
+
+  function cariAyat() {
+    const m = cari.trim().match(/^(\d{1,3})\s*[:.,\s-]\s*(\d{1,3})$/);
+    if (!m) { setCariErr('Tulis seperti 2:255'); return; }
+    const sn = Number(m[1]), an = Number(m[2]);
+    if (sn < 1 || sn > 114) { setCariErr('Surah 1–114'); return; }
+    if (an < 1 || an > SURAH_PAGES[sn - 1][3]) { setCariErr(`${SURAH_PAGES[sn - 1][1]} hanya ${SURAH_PAGES[sn - 1][3]} ayat`); return; }
+    const p = ayahPage.get(key(sn, an));
+    if (!p) { setCariErr('Ayat tidak ditemukan'); return; }
+    setCariErr(''); pindah(p);
+    if (!onPick) setSel({ s: sn, a: an });
+  }
+  function onTouchStart(e: React.TouchEvent) { const t = e.touches[0]; touchRef.current = { x: t.clientX, y: t.clientY, t: Date.now() }; }
+  function onTouchEnd(e: React.TouchEvent) {
+    const st = touchRef.current; touchRef.current = null;
+    if (!st || zoomIdx !== 0) return; // saat diperbesar, geser dipakai untuk menggulir
+    const t = e.changedTouches[0];
+    const dx = t.clientX - st.x, dy = t.clientY - st.y;
+    if (Date.now() - st.t > 700 || Math.abs(dx) < 70 || Math.abs(dx) < Math.abs(dy) * 2) return;
+    pindah(dx > 0 ? page + 1 : page - 1); // geser ke kanan = halaman berikutnya (seperti membuka mushaf Arab)
+  }
+  const surahDiHalaman = useMemo(() => {
+    if (!data) return [] as number[];
+    const out: number[] = [];
+    (data.pages[page - 1] || []).forEach((it) => {
+      if (it[0] === 'l') it[2].forEach((sg) => { if (sg[0] && !out.includes(sg[0])) out.push(sg[0]); });
+    });
+    return out;
+  }, [data, page]);
 
   function klikAyat(sn: number, an: number, isSel: boolean) {
     if (!onPick) { setSel(isSel ? null : { s: sn, a: an }); return; }
@@ -222,7 +269,7 @@ export default function MushafView({ user, target, embedded, onPick, pickHint }:
   return (
     <div>
       {!embedded && <h1 className="tf-title">Mushaf Digital</h1>}
-      <div className="tf-panel">
+      <div className="tf-panel mq-panel">
         <div className="tf-panel-body">
           {embedded && onPick && (
             <div className="tf-empty" style={{ textAlign: 'left', marginBottom: 10 }}>
@@ -239,36 +286,45 @@ export default function MushafView({ user, target, embedded, onPick, pickHint }:
 
           {data && tab === 'baca' && (
             <>
-              <div className="tf-mushaf-toolbar">
-                <select value="" onChange={(e) => e.target.value && goPage(Number(e.target.value))}>
+              <div className="tf-mushaf-toolbar" style={{ marginBottom: 8 }}>
+                <select value="" onChange={(e) => e.target.value && pindah(Number(e.target.value))}>
                   <option value="" disabled>-- Lompat ke surah --</option>
                   {surahHalaman.map((s) => <option key={s[0]} value={s[2]}>{s[0]}. {s[1]}</option>)}
                 </select>
-                <select value="" onChange={(e) => e.target.value && goPage(Number(e.target.value))}>
+                <select value="" onChange={(e) => e.target.value && pindah(Number(e.target.value))}>
                   <option value="" disabled>Juz {juzNow} — lompat ke juz</option>
                   {data.juzStart.map((p, i) => <option key={i} value={p}>Juz {i + 1} (hal. {p})</option>)}
                 </select>
-              </div>
-              <div className="tf-mushaf-toolbar">
-                <button className="tf-btn-sm" onClick={() => goPage(page - 1)} disabled={page <= 1}>‹ Sebelumnya</button>
-                <span>
-                  Hal. <input type="number" min={1} max={604} value={pageInput} onChange={(e) => setPageInput(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && goPage(Number(pageInput))} /> / 604
+                <span style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
+                  <input className="mq-cari" value={cari} placeholder="Cari ayat 2:255" inputMode="text"
+                    onChange={(e) => { setCari(e.target.value); setCariErr(''); }} onKeyDown={(e) => e.key === 'Enter' && cariAyat()} />
+                  <button className="tf-btn-sm" onClick={cariAyat}>Cari</button>
                 </span>
-                <button className="tf-btn-sm" onClick={() => goPage(Number(pageInput))}>Buka</button>
-                <button className="tf-btn-sm" onClick={() => goPage(page + 1)} disabled={page >= 604}>Berikutnya ›</button>
+              </div>
+              {cariErr && <div className="tf-error" style={{ marginBottom: 8 }}>{cariErr}</div>}
+              <div className="tf-mushaf-toolbar" style={{ marginBottom: 8 }}>
+                <button className="tf-btn-sm" onClick={() => pindah(page - 1)} disabled={page <= 1}>‹ Sebelumnya</button>
+                <span>
+                  Hal. <input type="number" min={1} max={604} value={pageInput} onChange={(e) => setPageInput(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && pindah(Number(pageInput))} /> / 604
+                </span>
+                <button className="tf-btn-sm" onClick={() => pindah(Number(pageInput))}>Buka</button>
+                <button className="tf-btn-sm" onClick={() => pindah(page + 1)} disabled={page >= 604}>Berikutnya ›</button>
                 <span style={{ marginLeft: 'auto', display: 'flex', gap: 6, alignItems: 'center' }}>
                   <button className="tf-btn-sm" onClick={() => ubahZoom(-1)} disabled={zoomIdx === 0} title="Perkecil">🔍−</button>
                   <button className="tf-btn-sm" onClick={() => ubahZoom(1)} disabled={zoomIdx === ZOOMS.length - 1} title="Perbesar">🔍+ Perbesar</button>
                 </span>
               </div>
 
-              <div className="tf-mushaf-toolbar">
+              <div className="tf-mushaf-toolbar" style={{ marginBottom: 8 }}>
                 <button className="tf-btn-sm tf-btn" style={{ width: 'auto' }} onClick={tombolPutar}>{audio.playing ? '⏸ Jeda' : audio.curGid !== null ? '▶ Lanjut' : '▶ Putar audio'}</button>
                 {audio.curGid !== null && <button className="tf-btn-sm" onClick={() => audio.stop()}>⏹ Berhenti</button>}
                 {audio.curGid !== null && <span style={{ fontSize: 12.5 }}>🔊 {SURAH_PAGES[playS - 1]?.[1]} : {playA}</span>}
+                {!embedded && <button className={audioOpen ? 'tf-btn-sm tf-btn' : 'tf-btn-sm'} onClick={() => setAudioOpen(!audioOpen)}>⚙ Audio</button>}
+                {!embedded && lastAtOpen > 0 && lastAtOpen !== page && <button className="tf-btn-sm" onClick={() => pindah(lastAtOpen)} title="Kembali ke halaman terakhir dibaca">↩ Terakhir dibaca (hal. {lastAtOpen})</button>}
+                <button className={infoOpen ? 'tf-btn-sm tf-btn' : 'tf-btn-sm'} style={{ marginLeft: 'auto' }} onClick={() => setInfoOpen(!infoOpen)} title="Petunjuk">ℹ️</button>
               </div>
-              {!embedded && (
-                <div className="tf-mushaf-toolbar">
+              {!embedded && audioOpen && (
+                <div className="tf-mushaf-toolbar" style={{ marginBottom: 8 }}>
                   <label style={{ fontSize: 12.5 }}>Qari{' '}
                     <select value={audio.qari} onChange={(e) => audio.setQari(e.target.value)}>
                       {QARIS.map((q) => <option key={q.id} value={q.id}>{q.nama}</option>)}
@@ -292,7 +348,12 @@ export default function MushafView({ user, target, embedded, onPick, pickHint }:
                 </div>
               )}
               {audio.error && <div className="tf-error" style={{ marginBottom: 8 }}>{audio.error}</div>}
-              {!embedded && <div className="tf-mushaf-note" style={{ marginBottom: 8 }}>Ketuk ayat untuk memilihnya; audio dimulai dari tombol ▶ (dari ayat terpilih, rentang sorotan, atau awal halaman). Audio memerlukan internet.</div>}
+              {infoOpen && (
+                <div className="tf-mushaf-note" style={{ marginBottom: 8 }}>
+                  Ketuk ayat untuk memilihnya. Audio dimulai dari tombol ▶ (dari ayat terpilih, rentang sorotan, atau awal halaman) dan memerlukan internet.
+                  Di HP, geser ke kanan untuk halaman berikutnya dan ke kiri untuk sebelumnya (saat tidak diperbesar). Di laptop bisa memakai tombol panah kiri/kanan.
+                </div>
+              )}
 
               {range && (
                 <div className="tf-empty" style={{ textAlign: 'left', marginBottom: 10, display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap' }}>
@@ -308,7 +369,7 @@ export default function MushafView({ user, target, embedded, onPick, pickHint }:
                 </div>
               )}
 
-              <div ref={wrapRef} className="mq-scroll">
+              <div ref={wrapRef} className="mq-scroll" onTouchStart={onTouchStart} onTouchEnd={onTouchEnd}>
                 <div className="mq-box" style={{ width: boxW }}>
                   {items.map((it, i) => {
                     const f = lineFs[i] || fs;
@@ -332,11 +393,17 @@ export default function MushafView({ user, target, embedded, onPick, pickHint }:
                       </div>
                     );
                   })}
-                  <div className="mq-foot">Halaman {page} · Juz {juzNow}</div>
+                  <div className="mq-foot">Halaman {page} · Juz {juzNow}{surahDiHalaman.length ? ` · ${surahDiHalaman.map((n) => SURAH_PAGES[n - 1][1]).join(' — ')}` : ''}</div>
                 </div>
               </div>
               <span ref={probeRef} className="mq-probe" aria-hidden="true" />
               {zoomIdx > 0 && <div className="tf-mushaf-note">Mode diperbesar: geser ke samping untuk membaca seluruh baris.</div>}
+              <div className="mq-bottombar">
+                <button className="tf-btn-sm" onClick={() => pindah(page - 1)} disabled={page <= 1}>‹ Sebelumnya</button>
+                <button className={audio.playing ? 'tf-btn-sm tf-btn' : 'tf-btn-sm'} onClick={tombolPutar} title="Putar / jeda audio">{audio.playing ? '⏸' : '▶'}</button>
+                <span className="mq-bb-info">Hal. {page} / 604 · Juz {juzNow}</span>
+                <button className="tf-btn-sm" onClick={() => pindah(page + 1)} disabled={page >= 604}>Berikutnya ›</button>
+              </div>
             </>
           )}
 

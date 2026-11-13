@@ -62,6 +62,7 @@ export const POST = withErrorHandling(async (req: NextRequest) => {
 // DELETE /api/presensi  { tanggal, penyimak_id?(admin only) } -- dikirim sebagai body JSON
 export const DELETE = withErrorHandling(async (req: NextRequest) => {
   const session = await requireAuth(getToken(req));
+  if (session.role !== 'admin' && session.role !== 'penyimak') throw new Error('Tidak diizinkan');
   const payload = await req.json();
   if (!payload.tanggal) throw new Error('tanggal wajib diisi');
   const effectivePenyimakId = session.role === 'admin' && payload.penyimak_id ? payload.penyimak_id : session.user_id;

@@ -88,6 +88,14 @@ export async function getSessionUser(token: string | null | undefined): Promise<
   return user;
 }
 
+/** Mengeluarkan semua sesi seorang pengguna (dipakai saat akun dinonaktifkan, peran/password diubah, atau dihapus). */
+export async function revokeUserSessions(userId: number | string) {
+  const db = getSupabaseAdmin();
+  const { data } = await db.from('sessions').select('token').eq('user_id', userId);
+  (data || []).forEach((r: any) => sessionCache.delete(r.token));
+  await db.from('sessions').delete().eq('user_id', userId);
+}
+
 export class AuthError extends Error {}
 
 export async function requireAuth(token: string | null | undefined): Promise<SessionUser> {

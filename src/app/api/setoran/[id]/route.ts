@@ -55,6 +55,7 @@ export const PUT = withErrorHandling(async (req: NextRequest, { params }: { para
 
 export const DELETE = withErrorHandling(async (req: NextRequest, { params }: { params: { id: string } }) => {
   const session = await requireAuth(getToken(req));
+  if (session.role !== 'admin' && session.role !== 'penyimak') throw new Error('Tidak diizinkan');
   const db = getSupabaseAdmin();
 
   if (session.role === 'penyimak') {

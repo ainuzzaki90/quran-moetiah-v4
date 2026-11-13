@@ -190,3 +190,9 @@ juga Singapore (Supabase -> Project Settings -> General). Jika berbeda, ubah "re
 - Filter tanggal, pelaku, jenis aksi, dan pencarian siswa; ekspor Excel; catatan > 12 bulan dihapus otomatis saat admin membuka menu.
 - WAJIB jalankan sekali `supabase/migration-audit-log.sql` di Supabase SQL Editor. Sebelum SQL dijalankan, aplikasi tetap normal (pencatatan dilewati diam-diam).
 - Perbaikan keamanan: mengubah setoran (PUT) kini hanya untuk admin/penyimak.
+
+## Mushaf Digital: navigasi (13 Nov 2026)
+- Bilah navigasi bawah yang menempel (‹ Sebelumnya · ▶/⏸ · Hal./Juz · Berikutnya ›); pindah halaman otomatis kembali ke awal halaman.
+- Pengaturan audio dilipat (tombol ⚙ Audio), petunjuk di tombol ℹ️.
+- Geser jari di HP (kanan = berikutnya, kiri = sebelumnya; nonaktif saat diperbesar).
+- Cari ayat (mis. 2:255), tombol "↩ Terakhir dibaca", nama surah di bawah halaman.

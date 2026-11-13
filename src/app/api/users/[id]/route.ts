@@ -1,5 +1,5 @@
 import { NextRequest } from 'next/server';
-import { requireAuth, hashPassword } from '@/lib/auth';
+import { requireAuth, hashPassword, revokeUserSessions } from '@/lib/auth';
 import { getSupabaseAdmin } from '@/lib/supabase';
 import { getToken, jsonOk, withErrorHandling } from '@/lib/api-helpers';
 import { logAudit, bedaField } from '@/lib/audit';
@@ -24,6 +24,11 @@ export const PUT = withErrorHandling(async (req: NextRequest, { params }: { para
   const { data, error } = await db.from('users').update(updates).eq('id', params.id).select('id');
   if (error) throw new Error(error.message);
   if (!data || !data.length) throw new Error('Pengguna tidak ditemukan');
+  // Akun dinonaktifkan / peran diubah / password direset -> sesi lama langsung tidak berlaku
+  // (kecuali sesi admin sendiri saat mengubah akunnya sendiri)
+  const nonaktif = updates.status === 'nonaktif';
+  const perluKeluar = nonaktif || (updates.role !== undefined && lama && updates.role !== lama.role) || !!payload.password;
+  if (perluKeluar && (nonaktif || String(params.id) !== String(session.user_id))) await revokeUserSessions(params.id);
   if (lama) {
     const { password_hash: _x, ...tanpaPw } = updates;
     const d = bedaField(lama, { ...lama, ...tanpaPw });
