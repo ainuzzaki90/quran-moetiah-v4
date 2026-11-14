@@ -52,11 +52,9 @@ export default function DashboardView({ user }: { user: User }) {
   return (
     <div>
       <h1 className="tf-title">Dashboard {ROLE_LABELS[user.role]}</h1>
-      <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap', alignItems: 'flex-end' }}>
-        <div style={{ minWidth: 220, flex: '0 1 320px' }}>
-          <HalaqahSelect list={halaqahList} value={halaqahId} onChange={setHalaqahId} allowAll />
-        </div>
-        <div className="tf-field" style={{ minWidth: 160, flex: '0 1 200px', marginBottom: 0 }}>
+      <div className="tf-dash-filters">
+        <HalaqahSelect list={halaqahList} value={halaqahId} onChange={setHalaqahId} allowAll />
+        <div className="tf-field">
           <label>Periode statistik</label>
           <select value={periode} onChange={(e) => setPeriode(e.target.value as any)}>
             {PERIODE_OPTIONS.map(([k, l]) => <option key={k} value={k}>{l}</option>)}

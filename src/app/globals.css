@@ -146,7 +146,7 @@
   .tf-content{flex:1;overflow-y:auto;padding:22px;}
   .tf-title{font-size:22px;color:var(--heading);margin:0 0 16px;font-weight:700;display:flex;align-items:center;gap:12px;}
 
-  .tf-stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:14px;margin-bottom:18px;}
+  .tf-stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:14px;margin-bottom:16px;}
   .tf-stat-card{border-radius:var(--card-radius);padding:18px;color:#fff;position:relative;overflow:hidden;
     box-shadow:var(--shadow-sm);transition:transform var(--transition-base),box-shadow var(--transition-base);}
   .tf-stat-card:hover{transform:translateY(-2px);box-shadow:var(--shadow-md);}
@@ -402,9 +402,9 @@
   }
 /* Font Amiri untuk teks Arab/Qur'an, diimpor lewat next/font di layout.tsx sebagai gantinya */
 
-  .tf-dash-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,340px),1fr));gap:14px;margin-bottom:18px;}
+  .tf-dash-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,340px),1fr));gap:14px;margin-bottom:16px;}
   .tf-dash-grid > .tf-panel{margin-bottom:0;min-width:0;}
-  .tf-mini-stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:12px;margin-bottom:18px;}
+  .tf-mini-stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:14px;margin-bottom:16px;}
   .tf-mini{background:var(--surface);border:1px solid var(--border);border-radius:var(--card-radius);padding:14px 16px;}
   .tf-mini .label{font-size:12.5px;color:var(--text-muted);font-weight:600;}
   .tf-mini .value{font-size:24px;font-weight:700;margin-top:4px;color:var(--heading);}
@@ -504,3 +504,19 @@
   .mq-res-t small{color:var(--text-muted);font-size:12px;}
   .mq-res-ar{font-family:"KFGQPC Hafs",serif;font-size:21px;line-height:1.9;text-align:right;}
   .mq-res-ar mark{background:#fde68a;color:inherit;border-radius:4px;padding:0 2px;}
+
+  /* Dashboard: filter sejajar, lebar sama dengan kolom kartu di bawahnya */
+  .tf-dash-filters{display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:14px;align-items:start;margin:0 0 16px;}
+  .tf-dash-filters .tf-field{margin:0;min-width:0;}
+  .tf-dash-filters .tf-field label{margin-bottom:5px;line-height:1.3;}
+  @media(max-width:520px){ .tf-dash-filters{grid-template-columns:1fr;} }
+
+  /* Sesi: banner peringatan, centang "Ingat saya", pesan di halaman login */
+  .tf-sess-bar{position:fixed;left:50%;transform:translateX(-50%);bottom:64px;z-index:9000;display:flex;gap:12px;align-items:center;
+    background:var(--surface);color:var(--text);border:1px solid var(--border);border-left:4px solid #d9a441;border-radius:12px;
+    padding:10px 14px;box-shadow:var(--shadow-lg);font-size:14px;max-width:calc(100vw - 24px);}
+  .tf-sess-bar button{width:auto;white-space:nowrap;}
+  .tf-remember{display:flex;gap:10px;align-items:flex-start;margin:0 0 14px;font-size:14px;text-align:left;cursor:pointer;}
+  .tf-remember input{width:auto;margin-top:3px;flex:none;}
+  .tf-remember small{display:block;color:var(--text-muted);font-size:12px;margin-top:2px;}
+  .tf-notice{background:#fff7e0;border:1px solid #ecd48a;color:#6b5210;border-radius:10px;padding:9px 12px;font-size:13.5px;margin:0 0 14px;text-align:left;}

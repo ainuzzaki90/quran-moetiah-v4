@@ -202,3 +202,10 @@ Bilah bawah dihapus. Diganti tombol bulat ‹ › melayang (laptop: tengah kiri-
 
 ### Pencarian terpadu Mushaf (13 Nov 2026)
 Kolom "Cari" di Mushaf Digital menerima: `2:255`, nama surah (`baqarah`, `kahfi`, `yaasiin`, `surat yusuf`), nama + ayat (`baqarah 255`), `ayat kursi`, `3 qul`, `juz 29`, `h 582`, dan kata/kalimat Arab (`بنعمة ربك`, dengan/tanpa harakat). Logika di `src/lib/mushaf-search.ts` (indeks dibuat dari data mushaf di peramban, tanpa data tambahan). Pencarian Arab mengabaikan harakat, alif, dan perbedaan ة/ه, ى/ي, serta ejaan Utsmani وٰ (mis. الصلاة cocok dengan الصلوة).
+
+### Sesi login (14 Nov 2026)
+- Sesi diperpanjang otomatis selama pengguna aktif (sliding, 8 jam sejak aktivitas terakhir; `perpanjang()` di `src/lib/auth.ts`). Peramban memanggil `GET /api/auth/ping` berkala saat aktif.
+- Banner "Sesi akan berakhir dalam N menit" (5 menit sebelum habis) dengan tombol Perpanjang.
+- Saat sesi habis, permintaan yang gagal (401) ditahan, muncul jendela "Sesi Anda sudah berakhir" (isi password), lalu permintaan diulang otomatis; isian form tidak hilang (`src/components/SessionGuard.tsx`, `src/lib/api-client.ts`). Tombol Keluar di jendela itu membawa ke halaman login dengan pesan ramah.
+- Login punya centang "Ingat saya selama 30 hari" (sesi 30 hari, juga diperpanjang saat aktif). Tanpa SQL baru.
+- Dashboard: filter Halaqah dan Periode disejajarkan (`.tf-dash-filters`), lebar sama dengan kolom kartu.

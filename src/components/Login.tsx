@@ -1,7 +1,7 @@
 'use client';
 
-import { useState } from 'react';
-import { api } from '@/lib/api-client';
+import { useEffect, useState } from 'react';
+import { api, setSessionExp, setRemember } from '@/lib/api-client';
 import type { User } from './AppShell';
 
 export default function Login({ onLogin }: { onLogin: (token: string, user: User) => void }) {
@@ -9,13 +9,20 @@ export default function Login({ onLogin }: { onLogin: (token: string, user: User
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
+  const [ingat, setIngat] = useState(false);
+  const [notice, setNotice] = useState('');
+  useEffect(() => {
+    try { const n = sessionStorage.getItem('mq_notice'); if (n) { setNotice(n); sessionStorage.removeItem('mq_notice'); } } catch { /* abaikan */ }
+  }, []);
 
   async function submit() {
     setError('');
     if (!username || !password) { setError('Username dan password wajib diisi'); return; }
     setLoading(true);
     try {
-      const res = await api.post('/auth/login', { username, password });
+      const res = await api.post('/auth/login', { username, password, remember: ingat });
+      setSessionExp(res.expires_at);
+      setRemember(ingat);
       onLogin(res.token, res.user);
     } catch (e: any) {
       setError(e.message || 'Username atau password salah');
@@ -32,6 +39,7 @@ export default function Login({ onLogin }: { onLogin: (token: string, user: User
             <img src="/assets/logo.png" alt="Logo SMP Islam Moetiah" className="tf-login-logo" />
             <h2>SMP Islam Moetiah</h2>
             <p className="tf-app-name">Moetiah Quran App</p>
+            {notice && <div className="tf-notice" role="status">{notice}</div>}
             <div className="tf-field">
               <label htmlFor="tf-login-username">Username</label>
               <input
@@ -56,10 +64,15 @@ export default function Login({ onLogin }: { onLogin: (token: string, user: User
                 onKeyDown={(e) => { if (e.key === 'Enter') submit(); }}
               />
             </div>
+            <label className="tf-remember">
+              <input type="checkbox" checked={ingat} onChange={(e) => setIngat(e.target.checked)} />
+              <span>Ingat saya selama 30 hari<small>Jangan dicentang di komputer atau HP yang dipakai bersama.</small></span>
+            </label>
             <button className="tf-btn" onClick={submit} disabled={loading}>
               {loading ? 'Memproses...' : 'Masuk'}
             </button>
             {error && <div className="tf-error">{error}</div>}
+
           </div>
         </div>
         <footer className="tf-footer">© {new Date().getFullYear()} SMP Islam Moetiah — dikembangkan oleh Abdal Ainuz Zaki, B.A.</footer>

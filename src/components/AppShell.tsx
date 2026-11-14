@@ -7,6 +7,7 @@ import Login from './Login';
 import Sidebar from './Sidebar';
 import Topbar from './Topbar';
 import TableLabels from './TableLabels';
+import SessionGuard from './SessionGuard';
 import DashboardView from './views/Dashboard';
 import SantriView from './views/Santri';
 import KelasView from './views/Kelas';
@@ -23,7 +24,7 @@ import AuditLogView from './views/AuditLog';
 import KenaikanJilidView from './views/KenaikanJilid';
 import type { MushafTarget } from '@/lib/mushaf-target';
 
-export type User = { id: number; nama: string; role: Role; kelas_id: number | null };
+export type User = { id: number; username?: string; nama: string; role: Role; kelas_id: number | null };
 
 export default function AppShell() {
   const [user, setUser] = useState<User | null>(null);
@@ -60,8 +61,12 @@ export default function AppShell() {
     setView('dashboard');
   }, []);
 
-  const handleLogout = useCallback(async () => {
+  const handleLogout = useCallback(async (sesiBerakhir = false) => {
     try { await api.post('/auth/logout'); } catch { /* abaikan */ }
+    try {
+      if (sesiBerakhir === true) sessionStorage.setItem('mq_notice', 'Sesi Anda sudah berakhir. Silakan masuk kembali.');
+      localStorage.removeItem('mq_exp');
+    } catch { /* abaikan */ }
     setToken(null);
     setStoredUser(null);
     setUser(null);
@@ -91,7 +96,8 @@ export default function AppShell() {
       />
       <div className="tf-right-col">
         <TableLabels />
-        <Topbar user={user} onToggleSidebar={() => setSidebarOpen((v) => !v)} onLogout={handleLogout} />
+        <Topbar user={user} onToggleSidebar={() => setSidebarOpen((v) => !v)} onLogout={() => handleLogout()} />
+        <SessionGuard user={user} onSwitchUser={handleLogin} onExpiredLogout={() => handleLogout(true)} />
         <div className="tf-content">
           {view === 'dashboard' && <DashboardView user={user} />}
           {view === 'santri' && <SantriView user={user} />}
